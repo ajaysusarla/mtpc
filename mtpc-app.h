@@ -23,6 +23,14 @@
 
 #define APP_NAME "mtpc"
 
+#define MTPC_TYPE_APP              (mtpc_app_get_type())
+#define MTPC_APP(obj)              (G_TYPE_CHECK_INSTANCE_CAST((obj), MTPC_TYPE_APP, MtpcApp))
+#define MTPC_APP_CLASS(klass)      (G_TYPE_CHECK_CLASS_CAST((klass), MTPC_TYPE_APP, MtpcAppClass))
+#define MTPC_IS_APP(obj)           (G_TYPE_CHECK_INSTANCE_TYPE((obj), MTPC_TYPE_APP))
+#define MTPC_IS_APP_CLASS(klass)   (G_TYPE_CHECK_CLASS_TYPE((klass), MTPC_TYPE_APP))
+#define MTPC_APP_GET_CLASS(obj)    (G_TYPE_INSTANCE_GET_CLASS((obj), MTPC_TYPE_APP, MtpcAppClass))
+
+
 typedef struct _MtpcApp MtpcApp;
 typedef struct _MtpcAppClass MtpcAppClass;
 typedef struct _MtpcAppPrivate MtpcAppPrivate;

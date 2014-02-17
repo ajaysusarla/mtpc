@@ -33,5 +33,5 @@ int main(int argc, char **argv)
 
 	g_object_unref(app);
 
-	exit(EXIT_SUCCESS);
+	exit(ret);
 }

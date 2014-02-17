@@ -17,7 +17,7 @@
  */
 
 #include "mtpc-app.h"
-
+#include "mtpc-window.h"
 
 struct _MtpcAppPrivate {
 	int remove;
@@ -27,6 +27,21 @@ G_DEFINE_TYPE (MtpcApp, mtpc_app, GTK_TYPE_APPLICATION)
 
 
 /* callbacks and private methods */
+static void new_mtpc_window(GApplication *application)
+{
+        GtkWidget *window;
+
+        window = mtpc_window_new(MTPC_APP(application));
+
+        gtk_widget_show_all(GTK_WIDGET(window));
+
+        gtk_window_present(GTK_WINDOW(window));
+}
+
+
+
+/* class implementation */
+
 static void mtpc_app_finalize(GObject *object)
 {
         G_OBJECT_CLASS(mtpc_app_parent_class)->finalize(object);
@@ -39,7 +54,6 @@ static void mtpc_app_startup(GApplication *application)
         g_object_set(gtk_settings_get_default(),
                      "gtk-application-prefer-dark-theme",
                      TRUE, NULL);
-
 }
 
 static void mtpc_app_shutdown(GApplication *application)
@@ -49,6 +63,7 @@ static void mtpc_app_shutdown(GApplication *application)
 
 static void mtpc_app_activate(GApplication *application)
 {
+	new_mtpc_window(application);
 }
 
 
@@ -58,9 +73,6 @@ static int mtpc_app_command_line(GApplication *application,
         return 0;
 }
 
-
-
-/* class implementation */
 static void mtpc_app_class_init(MtpcAppClass *klass)
 {
 	GApplicationClass *app_class = G_APPLICATION_CLASS(klass);

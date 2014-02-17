@@ -74,11 +74,17 @@ UNAME := $(shell $(CC) -dumpmachine 2>&1 | grep -E -o "linux|darwin")
 # Object files
 OBJS =  main.o \
 	mtpc-app.o \
+	gtk-utils.o \
+	glib-utils.o \
+	mtpc-window.o \
 	$(NULL)
 
 # Headers
 HDRS = 	main.h \
 	mtpc-app.h \
+	gtk-utils.h \
+	glib-utils.h \
+	mtpc-window.o \
 	$(NULL)
 
 DEPS = $(wildcard .dep/*.dep)
