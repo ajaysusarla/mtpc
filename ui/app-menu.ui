@@ -72,11 +72,12 @@
       <section>
 	<item>
 	  <attribute name='label' translatable='yes'>_Home Folder</attribute>
-	  <attribute name='action'>win.toggle_home_folder</attribute>
+	  <attribute name='action'>win.toggle-home-folder</attribute>
 	</item>
 	<item>
 	  <attribute name='label' translatable='yes'>Device _Properties</attribute>
-	  <attribute name='action'>win.toggle_device_properties</attribute>
+	  <attribute name='action'>win.toggle-device-properties</attribute>
+          <attribute name="accel"><![CDATA[<Ctrl>i]]></attribute>
 	</item>
       </section>
     </submenu>
