@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 	MtpcApp *app;
 	int ret;
 
-	app = mtpc_app_new();
+	app = mtpc_app_new(TRUE);
 
 	ret = g_application_run(G_APPLICATION(app), argc, argv);
 

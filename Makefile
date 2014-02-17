@@ -77,6 +77,7 @@ OBJS =  main.o \
 	gtk-utils.o \
 	glib-utils.o \
 	mtpc-window.o \
+	mtpc-actions-callbacks.o \
 	$(NULL)
 
 # Headers
@@ -84,7 +85,8 @@ HDRS = 	main.h \
 	mtpc-app.h \
 	gtk-utils.h \
 	glib-utils.h \
-	mtpc-window.o \
+	mtpc-window.h \
+	mtpc-actions-callbacks.h \
 	$(NULL)
 
 DEPS = $(wildcard .dep/*.dep)

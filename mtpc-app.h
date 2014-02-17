@@ -33,11 +33,9 @@
 
 typedef struct _MtpcApp MtpcApp;
 typedef struct _MtpcAppClass MtpcAppClass;
-typedef struct _MtpcAppPrivate MtpcAppPrivate;
 
 struct _MtpcApp {
 	GtkApplication parent;
-	MtpcAppPrivate *priv;
 };
 
 struct _MtpcAppClass {
@@ -45,7 +43,7 @@ struct _MtpcAppClass {
 };
 
 GType mtpc_app_get_type(void);
-MtpcApp *mtpc_app_new(void);
+MtpcApp *mtpc_app_new(gboolean show_app_menu);
 
 
 #endif /* MTPC_APP_H */
