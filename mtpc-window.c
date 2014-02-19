@@ -42,6 +42,14 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcWindow, mtpc_window, GTK_TYPE_APPLICATION_WINDOW)
 
 
 /* callbacks and internal methods */
+void refresh_device_list_cb(GSimpleAction *action,
+			    GVariant *parameter,
+			    gpointer user_data)
+{
+	printf("refresh_device_list_cb\n");
+	return;
+}
+
 static void device_connect_cb(GSimpleAction *action,
 			      GVariant      *state,
 			      gpointer       user_data)
@@ -118,7 +126,7 @@ static GtkWidget *_mtpc_window_create_toolbar()
 	toolbar = gtk_toolbar_new ();
 	button = gtk_tool_button_new (NULL, NULL);
 	gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (button), "gtk-refresh");
-	gtk_actionable_set_detailed_action_name (GTK_ACTIONABLE (button), "app.refresh-device-list");
+	gtk_actionable_set_detailed_action_name (GTK_ACTIONABLE (button), "win.refresh-device-list");
 	gtk_container_add (GTK_CONTAINER (toolbar), GTK_WIDGET (button));
 
 	button = gtk_tool_button_new (NULL, NULL);
@@ -137,6 +145,7 @@ static GtkWidget *_mtpc_window_create_toolbar()
 
 static GActionEntry win_entries[] = {
 	/* device */
+        { "refresh-device-list", refresh_device_list_cb, NULL, NULL, NULL },
         { "connect", device_connect_cb, NULL, NULL, NULL },
         { "disconnect", device_disconnect_cb, NULL, NULL, NULL },
 	/* edit */

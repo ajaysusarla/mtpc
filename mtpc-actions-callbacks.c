@@ -46,15 +46,6 @@ static GtkWidget * _mtpc_app_get_current_window(GApplication *application)
 	return GTK_WIDGET(windows->data);
 }
 
-void mtpc_app_refresh_device_list(GSimpleAction *action,
-				  GVariant *parameter,
-				  gpointer user_data)
-{
-	printf("mtpc_app_refresh_device_list\n");
-	return;
-}
-
-
 void mtpc_app_preferences(GSimpleAction *action,
 			  GVariant *parameter,
 			  gpointer user_data)

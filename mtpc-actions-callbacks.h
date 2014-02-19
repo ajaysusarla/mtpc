@@ -24,9 +24,6 @@
 void toggle_action_activated(GSimpleAction *action,
 			     GVariant      *parameter,
 			     gpointer       data);
-void mtpc_app_refresh_device_list(GSimpleAction *action,
-					  GVariant *parameter,
-					  gpointer user_data);
 void mtpc_app_preferences(GSimpleAction *action,
 				  GVariant *parameter,
 				  gpointer user_data);

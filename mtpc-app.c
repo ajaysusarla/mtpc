@@ -30,7 +30,6 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcApp, mtpc_app, GTK_TYPE_APPLICATION)
 /* callbacks and private methods */
 /* app menu */
 static const GActionEntry app_menu_entries[] = {
-        {"refresh-device-list", mtpc_app_refresh_device_list},
         {"preference", mtpc_app_preferences},
         {"help", mtpc_app_show_help},
         {"about", mtpc_app_show_about},
