@@ -61,4 +61,18 @@ void mtpc_statusbar_show_section(MtpcStatusbar *statusbar,
 
 GtkWidget *mtpc_statusbar_get_action_area(MtpcStatusbar *statusbar);
 
+
+#define MTPC_STATUSBAR_RESET(statusbar) do {				\
+		mtpc_statusbar_set_list_info(statusbar, "");		\
+		mtpc_statusbar_set_primary_text(statusbar, "");		\
+		mtpc_statusbar_set_secondary_text(statusbar, "");	\
+	} while (0)
+
+#define MTPC_STATUSBAR_UPDATE(statusbar, x, y, z) do {			\
+		mtpc_statusbar_set_list_info(statusbar, x);		\
+		mtpc_statusbar_set_primary_text(statusbar, y);		\
+		mtpc_statusbar_set_secondary_text(statusbar, z);	\
+	} while (0)
+
+
 #endif /* MTPC_STATUSBAR_H */
