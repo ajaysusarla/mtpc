@@ -16,7 +16,11 @@
  *
  */
 
+
+#include <stdlib.h>
+#include <string.h>
 #include <gdk/gdk.h>
+
 #include "mtpc-device.h"
 
 #define mtpc_debug(x)
@@ -189,3 +193,46 @@ GList *mtpc_device_get_list(void)
 	return device_list;
 }
 
+/* libmtp wrappers */
+void mtp_device_libmtp_init(void)
+{
+        LIBMTP_Init();
+}
+
+libmtp_dev_t *mtp_device_alloc_devices(void)
+{
+        libmtp_dev_t *devices;
+
+        devices = malloc(sizeof (*devices));
+        if (!devices) {
+                fprintf(stderr, "Memory allocation failure!!!\n");
+                exit(EXIT_FAILURE);
+        }
+
+        memset(devices, 0, sizeof(*devices));
+
+        return devices;
+}
+
+void mtp_device_free_devices (libmtp_dev_t *devices)
+{
+        if (devices) {
+                if (devices->rawdevices) {
+                        free(devices->rawdevices);
+                        devices->numrawdevices = 0;
+                }
+                free(devices);
+        }
+
+        return;
+}
+
+libmtp_err_t mtp_device_detect_devices(libmtp_dev_t *devices)
+{
+        libmtp_err_t err;
+
+        err = LIBMTP_Detect_Raw_Devices(&devices->rawdevices,
+					&devices->numrawdevices);
+
+        return err;
+}

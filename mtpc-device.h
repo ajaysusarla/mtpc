@@ -21,9 +21,22 @@
 #include <glib.h>
 #include <libmtp.h>
 
-typedef struct _Device Device;
+/* libmtp wrappers */
 
-struct _Device {
+/* Errors */
+#define MTP_DEVICE_ERROR_PARSE  1
+#define MTP_DEVICE_ERROR_DETECT 2
+
+typedef LIBMTP_error_number_t libmtp_err_t; /* For convenience */
+
+typedef struct _libmtp_dev {
+        LIBMTP_raw_device_t *rawdevices;
+        int numrawdevices;
+} libmtp_dev_t;
+
+
+/* internal Device structure */
+typedef struct {
         gchar *devname;
         gchar *model;
         gchar *manufacturer;
@@ -49,13 +62,20 @@ struct _Device {
         LIBMTP_file_t *files;
 
         LIBMTP_mtpdevice_t *device;
-};
+} Device;
 
 Device *mtpc_device_new(void);
 void mtpc_device_destroy(Device *device);
 Device *mtpc_device_new_from_raw_device(LIBMTP_raw_device_t *device);
-
 void mtpc_device_add(Device *device);
 GList *mtpc_device_get_list(void);
+
+
+/* libmtp wrapper functions */
+void mtp_device_libmtp_init (void);
+libmtp_dev_t *mtp_device_alloc_devices (void);
+void mtp_device_free_devices (libmtp_dev_t *devices);
+libmtp_err_t mtp_device_detect_devices (libmtp_dev_t *devices);
+
 
 #endif /* MTPC_DEVICE_H */
