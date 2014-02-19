@@ -79,6 +79,10 @@
 	  <attribute name='action'>win.toggle-device-properties</attribute>
           <attribute name="accel"><![CDATA[<Ctrl>i]]></attribute>
 	</item>
+	<item>
+	  <attribute name='label' translatable='yes'>_Status Bar</attribute>
+	  <attribute name='action'>win.toggle-status-bar</attribute>
+	</item>
       </section>
     </submenu>
   </menu>
