@@ -72,10 +72,10 @@ GList *mtpc_device_get_list(void);
 
 
 /* libmtp wrapper functions */
-void mtp_device_libmtp_init (void);
-libmtp_dev_t *mtp_device_alloc_devices (void);
-void mtp_device_free_devices (libmtp_dev_t *devices);
-libmtp_err_t mtp_device_detect_devices (libmtp_dev_t *devices);
+void mtpc_device_libmtp_init (void);
+libmtp_dev_t *mtpc_device_alloc_devices (void);
+void mtpc_device_free_devices (libmtp_dev_t *devices);
+libmtp_err_t mtpc_device_detect_devices (libmtp_dev_t *devices);
 
 
 #endif /* MTPC_DEVICE_H */

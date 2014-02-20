@@ -194,12 +194,12 @@ GList *mtpc_device_get_list(void)
 }
 
 /* libmtp wrappers */
-void mtp_device_libmtp_init(void)
+void mtpc_device_libmtp_init(void)
 {
         LIBMTP_Init();
 }
 
-libmtp_dev_t *mtp_device_alloc_devices(void)
+libmtp_dev_t *mtpc_device_alloc_devices(void)
 {
         libmtp_dev_t *devices;
 
@@ -214,7 +214,7 @@ libmtp_dev_t *mtp_device_alloc_devices(void)
         return devices;
 }
 
-void mtp_device_free_devices (libmtp_dev_t *devices)
+void mtpc_device_free_devices (libmtp_dev_t *devices)
 {
         if (devices) {
                 if (devices->rawdevices) {
@@ -227,7 +227,7 @@ void mtp_device_free_devices (libmtp_dev_t *devices)
         return;
 }
 
-libmtp_err_t mtp_device_detect_devices(libmtp_dev_t *devices)
+libmtp_err_t mtpc_device_detect_devices(libmtp_dev_t *devices)
 {
         libmtp_err_t err;
 
