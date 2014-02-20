@@ -25,6 +25,8 @@
 #include "glib-utils.h"
 #include "mtpc-window.h"
 #include "mtpc-actions-callbacks.h"
+#include "mtpc-devicelist.h"
+#include "mtpc-statusbar.h"
 
 typedef struct {
 	GtkWidget *grid;
@@ -35,6 +37,12 @@ typedef struct {
 	GtkWidget *left_container;
 	GtkWidget *sidebar;
 	GtkWidget *device_property_box;
+	GtkWidget *statusbar;
+
+	GtkWidget *devicelist;
+
+	GCancellable *cancellable;
+
 } MtpcWindowPrivate;
 
 
@@ -182,6 +190,7 @@ static void mtpc_window_init(MtpcWindow *win)
 	GdkScreen *screen;
 	GtkWidget *window;
 	GtkWidget *vbox;
+	GtkWidget *devlist_scrolled;
 
 	MtpcWindowPrivate *priv;
 
@@ -235,10 +244,29 @@ static void mtpc_window_init(MtpcWindow *win)
         gtk_paned_pack2(GTK_PANED(priv->sidebar),
 			priv->device_property_box, TRUE, FALSE);
 
+	/* statusbar */
+	priv->statusbar = mtpc_statusbar_new();
+	gtk_widget_show(priv->statusbar);
+        gtk_box_pack_end(GTK_BOX(priv->main_vbox),
+			 priv->statusbar, FALSE, FALSE, 3);
+
 	/*
         g_signal_connect_after(G_OBJECT(main_vbox), "realize",
                                G_CALLBACK(mainwindow_view_three_pane), NULL);
 	*/
+
+	/* device list */
+	devlist_scrolled = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(devlist_scrolled),
+                                       GTK_POLICY_AUTOMATIC,
+                                       GTK_POLICY_AUTOMATIC);
+	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(devlist_scrolled),
+                                            GTK_SHADOW_IN);
+	gtk_widget_show(devlist_scrolled);
+
+	priv->devicelist = mtpc_devicelist_new();
+	gtk_container_add(GTK_CONTAINER(devlist_scrolled), priv->devicelist);
+	gtk_box_pack_start(GTK_BOX(vbox), devlist_scrolled, TRUE, TRUE, 0);
 
 
 
@@ -262,3 +290,4 @@ GtkWidget *mtpc_window_new(MtpcApp *application)
 
 	return GTK_WIDGET(window);
 }
+
