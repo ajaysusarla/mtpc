@@ -27,6 +27,18 @@ enum {
 	LAST_SIGNAL
 };
 
+enum {
+        COL_DEVICE_INDEX = 0,
+        COL_DEVICE_MODEL,
+        COL_DEVICE_MFR,
+        COL_DEVICE_ITEM,
+        COL_DEVICE_ICON,
+        COL_DEVICE_EJECT,
+        COL_DEVICE_NO_EJECT,
+        N_COLS
+};
+
+
 typedef struct {
 	GtkTreeStore *tree_store;
 	GtkCellRenderer *text_renderer;
@@ -44,6 +56,93 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcDevicelist,
 
 
 /* internal private functions */
+static void add_columns(MtpcDevicelist *device_list, GtkTreeView *treeview)
+{
+	GtkCellRenderer *renderer;
+	GtkTreeViewColumn *column;
+
+	column = gtk_tree_view_column_new();
+	gtk_tree_view_column_set_spacing(column, 1);
+        gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_FIXED);
+        gtk_tree_view_column_set_resizable(column, TRUE);
+	gtk_tree_view_column_set_sort_column_id(column, COL_DEVICE_MODEL);
+        gtk_tree_view_column_set_title(column, "Device");
+
+
+	renderer = gtk_cell_renderer_pixbuf_new();
+        g_object_set(renderer, "ypad", 0, NULL);
+        gtk_tree_view_column_pack_start(column, renderer, FALSE);
+        gtk_tree_view_column_set_attributes(column, renderer,
+					    "pixbuf", COL_DEVICE_ICON,
+					    "pixbuf-eject", COL_DEVICE_EJECT,
+					    "pixbuf-no-eject", COL_DEVICE_EJECT,
+					    NULL);
+
+        renderer = gtk_cell_renderer_text_new();
+        g_object_set(renderer, "ypad", 0, NULL);
+        gtk_tree_view_column_pack_start(column, renderer, TRUE);
+        gtk_tree_view_column_set_attributes(column, renderer,
+					    "text", COL_DEVICE_MODEL,
+					    NULL);
+
+        gtk_tree_view_append_column (GTK_TREE_VIEW(treeview), column);
+        gtk_tree_view_set_expander_column (GTK_TREE_VIEW(treeview), column);
+}
+
+static gboolean popup_menu_cb(GtkWidget *widget, gpointer user_data)
+{
+	printf("popup\n");
+	return TRUE;
+}
+
+static gboolean button_press_cb(GtkWidget *widget,
+			       GdkEventButton *event,
+			       gpointer user_data)
+{
+	gboolean retval;
+
+	retval = FALSE;
+
+	return FALSE;
+}
+
+static gboolean button_release_event_cb(GtkWidget *widget,
+					GdkEventButton *event,
+					gpointer user_data)
+{
+	return FALSE;
+}
+
+static gboolean selection_changed_cb(GtkTreeSelection *selection,
+				     gpointer user_data)
+{
+	MtpcDevicelist *device_list = user_data;
+	GtkTreeIter iter;
+	GtkTreePath *selected_path;
+	MtpcDevicelistPrivate *priv;
+	Device *device;
+
+	priv = mtpc_devicelist_get_instance_private(device_list);
+
+
+	if (!gtk_tree_selection_get_selected(selection, NULL, &iter))
+		return FALSE;
+
+	selected_path = gtk_tree_model_get_path(GTK_TREE_MODEL(priv->tree_store),
+						&iter);
+
+	gtk_tree_model_get(GTK_TREE_MODEL(priv->tree_store),
+			   &iter,
+			   COL_DEVICE_ITEM, &device,
+			   -1);
+
+	/* load the device contents here */
+
+	gtk_tree_path_free(selected_path);
+
+	return FALSE;
+}
+
 
 /* class implementation */
 static void mtpc_devicelist_finalize(GObject *object)
@@ -108,6 +207,50 @@ static void mtpc_devicelist_class_init(MtpcDevicelistClass *klass)
 
 static void mtpc_devicelist_init(MtpcDevicelist *device_list)
 {
+	GtkTreeSelection *selection;
+	MtpcDevicelistPrivate *priv;
+
+	priv = mtpc_devicelist_get_instance_private(device_list);
+
+	priv->tree_store = gtk_tree_store_new(N_COLS,
+					      G_TYPE_INT,
+					      G_TYPE_STRING,
+					      G_TYPE_STRING,
+					      G_TYPE_POINTER,
+					      GDK_TYPE_PIXBUF,
+					      G_TYPE_BOOLEAN,
+					      G_TYPE_BOOLEAN);
+	gtk_tree_view_set_model(GTK_TREE_VIEW(device_list),
+				GTK_TREE_MODEL(priv->tree_store));
+
+	gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(device_list), FALSE);
+
+	add_columns(device_list, GTK_TREE_VIEW(device_list));
+
+	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(device_list), TRUE);
+	gtk_tree_view_set_search_column(GTK_TREE_VIEW(device_list),
+					COL_DEVICE_MODEL);
+        gtk_tree_view_set_reorderable(GTK_TREE_VIEW(device_list), FALSE);
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(device_list));
+	gtk_tree_selection_set_mode(selection, GTK_SELECTION_SINGLE);
+	g_signal_connect(selection, "changed",
+			 G_CALLBACK(selection_changed_cb),
+			 device_list);
+
+	/* signal handlers */
+	g_signal_connect(device_list,
+			 "popup-menu",
+			 G_CALLBACK(popup_menu_cb),
+			 device_list);
+	g_signal_connect(device_list,
+			 "button-press-event",
+			 G_CALLBACK(button_press_cb),
+			 device_list);
+	g_signal_connect(device_list,
+			 "button-release-event",
+			 G_CALLBACK(button_release_event_cb),
+			 device_list);
 }
 
 /* public functions */
@@ -118,4 +261,51 @@ GtkWidget *mtpc_devicelist_new(void)
 	device_list = g_object_new(MTPC_TYPE_DEVICELIST, NULL);
 
 	return GTK_WIDGET(device_list);
+}
+
+gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
+				     int index,
+				     GtkTreeIter *iter,
+				     Device *device)
+{
+	GtkTreeIter child;
+	MtpcDevicelistPrivate *priv;
+	GdkPixbuf *pixbuf = NULL;
+
+        g_return_val_if_fail(device != NULL, FALSE);
+        g_return_val_if_fail(device->device != NULL, FALSE);
+
+	priv = mtpc_devicelist_get_instance_private(device_list);
+
+	mtpc_device_add(device);
+
+	gtk_tree_store_append(priv->tree_store, &child, NULL);
+
+	gtk_tree_store_set(priv->tree_store, &child,
+			   COL_DEVICE_INDEX, index,
+			   COL_DEVICE_MODEL, device->model,
+			   COL_DEVICE_MFR, device->manufacturer,
+			   COL_DEVICE_ITEM, device,
+			   COL_DEVICE_ICON, pixbuf,
+			   COL_DEVICE_EJECT, TRUE,
+			   COL_DEVICE_NO_EJECT, FALSE,
+			   -1);
+
+	return TRUE;
+}
+
+void mtpc_devicelist_clear(MtpcDevicelist *device_list)
+{
+	MtpcDevicelistPrivate *priv;
+        GList *cur;
+
+	priv = mtpc_devicelist_get_instance_private(device_list);
+
+        for (cur = mtpc_device_get_list(); cur != NULL; cur = cur->next)
+                mtpc_device_destroy((Device *)cur->data);
+
+        while (gtk_events_pending())
+                gtk_main_iteration();
+
+        gtk_tree_store_clear(priv->tree_store);
 }

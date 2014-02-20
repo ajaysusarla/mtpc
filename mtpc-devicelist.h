@@ -59,5 +59,9 @@ struct _MtpcDevicelistClass {
 
 GType mtpc_devicelist_get_type(void);
 GtkWidget *mtpc_devicelist_new(void);
-
+gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
+				     int index,
+				     GtkTreeIter *iter,
+				     Device *device);
+void mtpc_devicelist_clear(MtpcDevicelist *device_list);
 #endif /* MTPC_DEVICELIST_H */

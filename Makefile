@@ -78,6 +78,9 @@ OBJS =  main.o \
 	glib-utils.o \
 	mtpc-window.o \
 	mtpc-actions-callbacks.o \
+	mtpc-device.o \
+	mtpc-devicelist.o \
+	mtpc-statusbar.o \
 	$(NULL)
 
 # Headers
@@ -87,6 +90,9 @@ HDRS = 	main.h \
 	glib-utils.h \
 	mtpc-window.h \
 	mtpc-actions-callbacks.h \
+	mtpc-device.h \
+	mtpc-devicelist.h \
+	mtpc-statusbar.h \
 	$(NULL)
 
 DEPS = $(wildcard .dep/*.dep)
