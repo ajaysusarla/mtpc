@@ -50,11 +50,123 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcWindow, mtpc_window, GTK_TYPE_APPLICATION_WINDOW)
 
 
 /* callbacks and internal methods */
-void refresh_device_list_cb(GSimpleAction *action,
-			    GVariant *parameter,
-			    gpointer user_data)
+static gboolean update_statusbar(gpointer data)
 {
-	printf("refresh_device_list_cb\n");
+	MtpcStatusbar *statusbar = MTPC_STATUSBAR(data);
+
+	mtpc_statusbar_set_list_info(statusbar, "|");
+	mtpc_statusbar_set_list_info(statusbar, "/");
+	mtpc_statusbar_set_list_info(statusbar, "-");
+	mtpc_statusbar_set_list_info(statusbar, "\\");
+	mtpc_statusbar_set_list_info(statusbar, "|");
+	return TRUE;
+}
+
+typedef struct {
+	libmtp_dev_t *devices;
+	MtpcWindow *window;
+	gint func_ref;
+} DeviceAsyncFetchData;
+
+static void fetch_devices_data_free(gpointer user_data)
+{
+	DeviceAsyncFetchData *data = (DeviceAsyncFetchData *)user_data;
+
+	mtpc_device_free_devices(data->devices);
+	g_slice_free(DeviceAsyncFetchData, data);
+}
+
+static void fetch_devices_task_finish(GObject *self,
+				      GAsyncResult *result,
+				      gpointer task_data)
+{
+	DeviceAsyncFetchData *data =  (DeviceAsyncFetchData *)task_data;
+
+	g_return_val_if_fail(g_task_is_valid(result, self), NULL);
+	g_source_remove (data->func_ref);
+}
+
+static void fetch_devices_task_thread_func(GTask *task,
+					   gpointer source,
+					   gpointer task_data,
+					   GCancellable *cancellable)
+{
+	int i;
+	DeviceAsyncFetchData *data =  (DeviceAsyncFetchData *)task_data;
+	libmtp_dev_t *devices = data->devices;
+	MtpcWindow *window = data->window;
+	MtpcWindowPrivate *priv = mtpc_window_get_instance_private(window);
+
+	i = devices->numrawdevices;
+
+	while (--i >= 0) {
+		Device *device;
+
+		device = mtpc_device_new_from_raw_device(&devices->rawdevices[i]);
+		mtpc_devicelist_append_item(MTPC_DEVICELIST(priv->devicelist),
+					    i, NULL,
+					    device);
+	}
+}
+
+static void fetch_devices_async(MtpcWindow *window)
+{
+	libmtp_err_t err;
+	DeviceAsyncFetchData *data;
+	GTask *fetch_devices_task;
+	MtpcWindowPrivate *priv;
+	MtpcStatusbar *statusbar;
+
+	data = g_slice_new0(DeviceAsyncFetchData);
+
+	priv = mtpc_window_get_instance_private(window);
+	statusbar = MTPC_STATUSBAR(priv->statusbar);
+
+	mtpc_devicelist_clear(MTPC_DEVICELIST(priv->devicelist));
+
+	data->window = window;
+	data->devices = mtpc_device_alloc_devices();
+
+	err = mtpc_device_detect_devices(data->devices);
+
+	if (err == LIBMTP_ERROR_NO_DEVICE_ATTACHED) {
+		MTPC_STATUSBAR_UPDATE(statusbar, "", "No MTP devices found", "");
+		mtpc_device_free_devices(data->devices);
+	} else if (err == LIBMTP_ERROR_NONE) {
+		MTPC_STATUSBAR_UPDATE(statusbar, "", "MTP devices found..", "");
+		data->func_ref = g_timeout_add(100, update_statusbar,
+					       statusbar);
+		fetch_devices_task = g_task_new(NULL, priv->cancellable,
+						fetch_devices_task_finish,
+						data);
+		g_task_set_task_data(fetch_devices_task, data,
+				     fetch_devices_data_free);
+
+		g_task_run_in_thread(fetch_devices_task,
+				     fetch_devices_task_thread_func);
+
+		g_object_unref(fetch_devices_task);
+	}
+
+	return;
+}
+
+static void refresh_device_list_cb(GSimpleAction *action,
+				   GVariant *parameter,
+				   gpointer user_data)
+{
+	MtpcWindow *window = MTPC_WINDOW(user_data);
+	MtpcWindowPrivate *priv;
+	MtpcStatusbar *statusbar;
+
+	priv = mtpc_window_get_instance_private(window);
+
+	statusbar = MTPC_STATUSBAR(priv->statusbar);
+
+	MTPC_STATUSBAR_UPDATE(statusbar, "", "Detecting MTP Devices..", "");
+
+	fetch_devices_async(window);
+
 	return;
 }
 
@@ -115,6 +227,19 @@ static void change_device_properties_view(GSimpleAction *action,
 	g_simple_action_set_state(action, state);
 }
 
+static void change_statusbar_view_state(GSimpleAction *action,
+					GVariant      *state,
+					gpointer       user_data)
+{
+	if (g_variant_get_boolean(state)) {
+		printf("show statusbar\n");
+	} else {
+		printf("hide statusbar\n");
+	}
+
+	g_simple_action_set_state(action, state);
+}
+
 static void _mtpc_window_set_default_size(GtkWidget *window, GdkScreen *screen)
 {
         int max_width;
@@ -163,6 +288,7 @@ static GActionEntry win_entries[] = {
 	/* view */
         { "toggle-home-folder", toggle_action_activated, NULL, "false", change_home_folder_view_state },
         { "toggle-device-properties", toggle_action_activated, NULL, "false", change_device_properties_view },
+        { "toggle-status-bar", toggle_action_activated, NULL, "true", change_statusbar_view_state },
 };
 
 /* class implementation */
