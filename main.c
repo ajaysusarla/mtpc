@@ -21,11 +21,15 @@
 
 #include "main.h"
 #include "mtpc-app.h"
+#include "mtpc-device.h"
 
 int main(int argc, char **argv)
 {
 	MtpcApp *app;
 	int ret;
+
+
+	mtpc_device_libmtp_init();
 
 	app = mtpc_app_new(TRUE);
 
