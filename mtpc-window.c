@@ -62,6 +62,29 @@ static gboolean update_statusbar(gpointer data)
 	return TRUE;
 }
 
+
+static void devicelist_device_popup_cb(MtpcDevicelist *devicelist,
+				       Device *device,
+				       gpointer user_data)
+{
+	printf("devicelist_device_popup_cb\n");
+}
+
+static void devicelist_device_open_cb(MtpcDevicelist *devicelist,
+				      Device *device,
+				      gpointer user_data)
+{
+	printf("devicelist_device_open_cb\n");
+}
+
+static void devicelist_device_load_cb(MtpcDevicelist *devicelist,
+				      Device *device,
+				      gpointer user_data)
+{
+	MtpcWindow *window = MTPC_WINDOW(user_data);
+	printf("devicelist_device_load_cb\n");
+}
+
 typedef struct {
 	libmtp_dev_t *devices;
 	MtpcWindow *window;
@@ -394,11 +417,21 @@ static void mtpc_window_init(MtpcWindow *win)
 	gtk_container_add(GTK_CONTAINER(devlist_scrolled), priv->devicelist);
 	gtk_box_pack_start(GTK_BOX(vbox), devlist_scrolled, TRUE, TRUE, 0);
 
-
+	g_signal_connect(priv->devicelist,
+			 "folder_popup",
+			 G_CALLBACK(devicelist_device_popup_cb),
+			 win);
+	g_signal_connect(priv->devicelist,
+			 "open",
+			 G_CALLBACK(devicelist_device_open_cb),
+			 win);
+	g_signal_connect(priv->devicelist,
+			 "load",
+			 G_CALLBACK(devicelist_device_load_cb),
+			 win);
 
 	/* add the main_vbox to the container */
 	gtk_grid_attach (GTK_GRID (priv->grid), priv->main_vbox, 0, 1, 1, 1);
-
 }
 
 /* public methods */

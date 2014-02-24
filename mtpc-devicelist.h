@@ -40,21 +40,14 @@ struct _MtpcDevicelist {
 struct _MtpcDevicelistClass {
 	GtkTreeViewClass parent_class;
 
-	/*
 	void (*folder_popup) (MtpcDevicelist *device_list,
-			      Device *device,
-			      guint32 time);
+			      Device *device);
 
 	void (*load) (MtpcDevicelist *device_list,
 		      Device *device);
 
 	void (*open) (MtpcDevicelist *device_list,
 		      Device *device);
-
-	void (*rename) (MtpcDevicelist *device_list,
-			Device *device,
-			const char *new_name);
-	*/
 };
 
 GType mtpc_devicelist_get_type(void);

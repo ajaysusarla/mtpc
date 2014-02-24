@@ -23,7 +23,6 @@ enum {
 	FOLDER_POPUP,
 	LOAD,
 	OPEN,
-	RENAME,
 	LAST_SIGNAL
 };
 
@@ -51,7 +50,6 @@ static guint mtpc_devicelist_signals[LAST_SIGNAL] = { 0 };
 G_DEFINE_TYPE_WITH_PRIVATE(MtpcDevicelist,
 			   mtpc_devicelist,
 			   GTK_TYPE_TREE_VIEW);
-
 
 
 
@@ -91,7 +89,32 @@ static void add_columns(MtpcDevicelist *device_list, GtkTreeView *treeview)
 
 static gboolean popup_menu_cb(GtkWidget *widget, gpointer user_data)
 {
-	printf("popup\n");
+	MtpcDevicelist *devicelist = MTPC_DEVICELIST(user_data);
+	MtpcDevicelistPrivate *priv;
+	GtkTreeStore *tree_store;
+	GtkTreeIter iter;
+	Device *device;
+
+	priv = mtpc_devicelist_get_instance_private(devicelist);
+	tree_store = priv->tree_store;
+
+	if (gtk_tree_selection_get_selected(gtk_tree_view_get_selection(GTK_TREE_VIEW(devicelist)), NULL, &iter)) {
+
+			gtk_tree_model_get(GTK_TREE_MODEL(tree_store),
+					   &iter,
+					   COL_DEVICE_ITEM, &device,
+					   -1);
+
+			if (!device)
+				return FALSE;
+	}
+
+	g_signal_emit(devicelist,
+		      mtpc_devicelist_signals[FOLDER_POPUP],
+		      0,
+		      device);
+
+
 	return TRUE;
 }
 
@@ -99,11 +122,73 @@ static gboolean button_press_cb(GtkWidget *widget,
 			       GdkEventButton *event,
 			       gpointer user_data)
 {
+	MtpcDevicelist *devicelist = MTPC_DEVICELIST(user_data);
+	MtpcDevicelistPrivate *priv;
+	GtkTreePath *path;
+	GtkTreeIter iter;
 	gboolean retval;
+	GtkTreeViewColumn *column;
+	int cell_x, cell_y;
 
 	retval = FALSE;
 
-	return FALSE;
+	priv = mtpc_devicelist_get_instance_private(devicelist);
+
+	gtk_widget_grab_focus(widget);
+
+	if ((event->state & GDK_SHIFT_MASK) || (event->state & GDK_CONTROL_MASK))
+		return retval;
+
+	if ((event->button != 1) && (event->button != 3))
+		return retval;
+
+	if (!gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(devicelist),
+					   event->x, event->y,
+					   &path,
+					   &column,
+					   &cell_x,
+					   &cell_y))
+	{
+		if (event->button == 3) {
+			g_signal_emit(devicelist,
+				      mtpc_devicelist_signals[FOLDER_POPUP],
+				      0,
+				      NULL);
+			retval = TRUE;
+		}
+
+		return retval;
+	}
+
+	if (!gtk_tree_model_get_iter(GTK_TREE_MODEL(priv->tree_store),
+				    &iter,
+				    path))
+	{
+		gtk_tree_path_free(path);
+		return retval;
+	}
+
+	if (event->button == 3) {
+		Device *device;
+
+		gtk_tree_model_get(GTK_TREE_MODEL(priv->tree_store),
+				   &iter,
+				   COL_DEVICE_ITEM, &device,
+				   -1);
+
+		if (device && device->device) {
+			g_signal_emit(devicelist,
+				      mtpc_devicelist_signals[FOLDER_POPUP],
+				      0,
+				      device);
+
+			retval = TRUE;
+		}
+	}
+
+	gtk_tree_path_free(path);
+
+	return retval;
 }
 
 static gboolean button_release_event_cb(GtkWidget *widget,
@@ -113,16 +198,24 @@ static gboolean button_release_event_cb(GtkWidget *widget,
 	return FALSE;
 }
 
+static void load_contents_of_device(MtpcDevicelist *devicelist, Device *device)
+{
+	g_signal_emit(devicelist,
+		      mtpc_devicelist_signals[LOAD],
+		      0,
+		      device);
+}
+
 static gboolean selection_changed_cb(GtkTreeSelection *selection,
 				     gpointer user_data)
 {
-	MtpcDevicelist *device_list = user_data;
+	MtpcDevicelist *devicelist = user_data;
 	GtkTreeIter iter;
 	GtkTreePath *selected_path;
 	MtpcDevicelistPrivate *priv;
 	Device *device;
 
-	priv = mtpc_devicelist_get_instance_private(device_list);
+	priv = mtpc_devicelist_get_instance_private(devicelist);
 
 
 	if (!gtk_tree_selection_get_selected(selection, NULL, &iter))
@@ -137,12 +230,46 @@ static gboolean selection_changed_cb(GtkTreeSelection *selection,
 			   -1);
 
 	/* load the device contents here */
+	load_contents_of_device(devicelist, device);
 
 	gtk_tree_path_free(selected_path);
 
 	return FALSE;
 }
 
+static void open_device(MtpcDevicelist *devicelist, Device *device)
+{
+	g_signal_emit(devicelist, mtpc_devicelist_signals[OPEN], 0, device);
+}
+
+static gboolean row_activated_cb(GtkTreeView *tree_view,
+				 GtkTreePath *path,
+				 GtkTreeViewColumn *column,
+				 gpointer user_data)
+{
+	MtpcDevicelist *devicelist = MTPC_DEVICELIST(user_data);
+	MtpcDevicelistPrivate *priv;
+	GtkTreeIter iter;
+	Device *device;
+
+	priv = mtpc_devicelist_get_instance_private(devicelist);
+
+	if(!gtk_tree_model_get_iter(GTK_TREE_MODEL(priv->tree_store),
+				    &iter,
+				    path))
+	{
+		return FALSE;
+	}
+
+	gtk_tree_model_get(GTK_TREE_MODEL(priv->tree_store),
+			   &iter,
+			   COL_DEVICE_ITEM, &device,
+			   -1);
+
+	open_device(devicelist, device);
+
+	return TRUE;
+}
 
 /* class implementation */
 static void mtpc_devicelist_finalize(GObject *object)
@@ -156,53 +283,39 @@ static void mtpc_devicelist_class_init(MtpcDevicelistClass *klass)
 
 	object_class->finalize = mtpc_devicelist_finalize;
 
-	/*
+
 	mtpc_devicelist_signals[FOLDER_POPUP] =
 		g_signal_new("folder_popup",
-			     G_TYPE_FROM_CLASS(class),
+			     G_TYPE_FROM_CLASS(klass),
 			     G_SIGNAL_RUN_LAST,
 			     G_STRUCT_OFFSET(MtpcDevicelistClass, folder_popup),
 			     NULL, NULL,
-			     mtpc_marshal_VOID__OBJECT_UINT,
+			     g_cclosure_marshal_VOID__POINTER,
 			     G_TYPE_NONE,
-			     2,
-			     G_TYPE_OBJECT,
-			     G_TYPE_UINT);
+			     1,
+			     G_TYPE_POINTER);
 
 	mtpc_devicelist_signals[LOAD] =
 		g_signal_new("load",
-			     G_TYPE_FROM_CLASS(class),
+			     G_TYPE_FROM_CLASS(klass),
 			     G_SIGNAL_RUN_LAST,
 			     G_STRUCT_OFFSET(MtpcDevicelistClass, load),
 			     NULL, NULL,
-			     g_cclosure_marshal_VOID__OBJECT,
+			     g_cclosure_marshal_VOID__POINTER,
 			     G_TYPE_NONE,
 			     1,
-			     G_TYPE_OBJECT);
+			     G_TYPE_POINTER);
 
 	mtpc_devicelist_signals[OPEN] =
 		g_signal_new("open",
-			     G_TYPE_FROM_CLASS(class),
+			     G_TYPE_FROM_CLASS(klass),
 			     G_SIGNAL_RUN_LAST,
 			     G_STRUCT_OFFSET(MtpcDevicelistClass, open),
 			     NULL, NULL,
-			     g_cclosure_marshal_VOID__OBJECT,
+			     g_cclosure_marshal_VOID__POINTER,
 			     G_TYPE_NONE,
 			     1,
-			     G_TYPE_OBJECT);
-
-	mtpc_devicelist_signals[RENAME] =
-		g_signal_new("rename",
-			     G_TYPE_FROM_CLASS(class),
-			     G_SIGNAL_RUN_LAST,
-			     G_STRUCT_OFFSET(MtpcDevicelistClass, rename),
-			     NULL, NULL,
-			     mtpc_marshal_VOID__OBJECT_STRING,
-			     G_TYPE_NONE,
-			     2,
-			     G_TYPE_OBJECT,
-			     G_TYPE_STRING);
-	*/
+			     G_TYPE_POINTER);
 }
 
 static void mtpc_devicelist_init(MtpcDevicelist *device_list)
@@ -250,6 +363,10 @@ static void mtpc_devicelist_init(MtpcDevicelist *device_list)
 	g_signal_connect(device_list,
 			 "button-release-event",
 			 G_CALLBACK(button_release_event_cb),
+			 device_list);
+	g_signal_connect(device_list,
+			 "row-activated",
+			 G_CALLBACK(row_activated_cb),
 			 device_list);
 }
 
