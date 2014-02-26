@@ -36,7 +36,8 @@ typedef struct {
 	GtkWidget *right_container;
 	GtkWidget *left_container;
 	GtkWidget *sidebar;
-	GtkWidget *device_property_box;
+	GtkWidget *device_properties_box;
+	GtkWidget *device_properties_grid;
 	GtkWidget *statusbar;
 
 	GtkWidget *devicelist;
@@ -237,27 +238,60 @@ static void change_home_folder_view_state(GSimpleAction *action,
 	g_simple_action_set_state(action, state);
 }
 
+static void _mtpc_window_set_device_properties_visibility(GtkWidget *properties,
+							  gboolean visible)
+{
+	if (visible) {
+		gtk_widget_show(properties);
+	} else {
+		gtk_widget_hide(properties);
+	}
+}
+
 static void change_device_properties_view(GSimpleAction *action,
 					  GVariant      *state,
 					  gpointer       user_data)
 {
+	MtpcWindow *window = MTPC_WINDOW(user_data);
+	MtpcWindowPrivate *priv = mtpc_window_get_instance_private(window);
+
 	if (g_variant_get_boolean(state)) {
 		printf("show device properties\n");
+		_mtpc_window_set_device_properties_visibility(priv->device_properties_box,
+							      TRUE);
 	} else {
+		_mtpc_window_set_device_properties_visibility(priv->device_properties_box,
+							      FALSE);
+
 		printf("hide device properties\n");
 	}
 
 	g_simple_action_set_state(action, state);
 }
 
+static void _mtpc_window_set_statusbar_visibility(GtkWidget *statusbar,
+						 gboolean visible)
+{
+	if (visible) {
+		gtk_widget_show(statusbar);
+	} else {
+		gtk_widget_hide(statusbar);
+	}
+}
+
 static void change_statusbar_view_state(GSimpleAction *action,
 					GVariant      *state,
 					gpointer       user_data)
 {
+	MtpcWindow *window = MTPC_WINDOW(user_data);
+	MtpcWindowPrivate *priv = mtpc_window_get_instance_private(window);
+
 	if (g_variant_get_boolean(state)) {
 		printf("show statusbar\n");
+		_mtpc_window_set_statusbar_visibility(priv->statusbar, TRUE);
 	} else {
 		printf("hide statusbar\n");
+		_mtpc_window_set_statusbar_visibility(priv->statusbar, FALSE);
 	}
 
 	g_simple_action_set_state(action, state);
@@ -389,15 +423,10 @@ static void mtpc_window_init(MtpcWindow *win)
         gtk_widget_set_size_request (vbox, -1, 50);
         gtk_paned_pack1(GTK_PANED(priv->sidebar), vbox, TRUE, FALSE);
 
-	priv->device_property_box = gtk_box_new(GTK_ORIENTATION_VERTICAL,0);
-        gtk_paned_pack2(GTK_PANED(priv->sidebar),
-			priv->device_property_box, TRUE, FALSE);
-
 	/* statusbar */
 	priv->statusbar = mtpc_statusbar_new();
 	gtk_widget_show(priv->statusbar);
-        gtk_box_pack_end(GTK_BOX(priv->main_vbox),
-			 priv->statusbar, FALSE, FALSE, 3);
+	gtk_widget_set_vexpand(priv->statusbar, FALSE);
 
 	/*
         g_signal_connect_after(G_OBJECT(main_vbox), "realize",
@@ -430,8 +459,15 @@ static void mtpc_window_init(MtpcWindow *win)
 			 G_CALLBACK(devicelist_device_load_cb),
 			 win);
 
+	/* device property box */
+	priv->device_properties_box = gtk_box_new(GTK_ORIENTATION_VERTICAL,0);
+        gtk_paned_pack2(GTK_PANED(priv->sidebar),
+			priv->device_properties_box, TRUE, FALSE);
+
+
 	/* add the main_vbox to the container */
-	gtk_grid_attach (GTK_GRID (priv->grid), priv->main_vbox, 0, 1, 1, 1);
+	gtk_grid_attach(GTK_GRID(priv->grid), priv->main_vbox, 0, 1, 1, 1);
+	gtk_grid_attach(GTK_GRID(priv->grid), priv->statusbar, 0, 2, 1, 1);
 }
 
 /* public methods */
