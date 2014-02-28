@@ -274,6 +274,7 @@ static gboolean row_activated_cb(GtkTreeView *tree_view,
 /* class implementation */
 static void mtpc_devicelist_finalize(GObject *object)
 {
+	G_OBJECT_CLASS(mtpc_devicelist_parent_class)->finalize(object);
 }
 
 static void mtpc_devicelist_class_init(MtpcDevicelistClass *klass)
