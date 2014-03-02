@@ -35,6 +35,8 @@ typedef struct {
 
 	GtkWidget *right_container;
 	GtkWidget *left_container;
+	GtkWidget *home_folder_tree;
+	GtkWidget *device_folder_tree;
 	GtkWidget *sidebar;
 	GtkWidget *device_properties_box;
 	GtkWidget *device_properties_grid;
@@ -344,7 +346,7 @@ static GActionEntry win_entries[] = {
         { "paste", paste_cb, NULL, NULL, NULL },
 	/* view */
         { "toggle-home-folder", toggle_action_activated, NULL, "false", change_home_folder_view_state },
-        { "toggle-device-properties", toggle_action_activated, NULL, "false", change_device_properties_view },
+        { "toggle-device-properties", toggle_action_activated, NULL, "true", change_device_properties_view },
         { "toggle-status-bar", toggle_action_activated, NULL, "true", change_statusbar_view_state },
 };
 
@@ -413,6 +415,9 @@ static void mtpc_window_init(MtpcWindow *win)
         gtk_paned_pack1(GTK_PANED(priv->right_container),
 			priv->left_container, TRUE, TRUE);
 
+	/* home folder tree */
+
+	/* sidebar */
         priv->sidebar = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
         gtk_paned_pack1(GTK_PANED(priv->left_container),
 			priv->sidebar, FALSE, FALSE);
@@ -422,6 +427,8 @@ static void mtpc_window_init(MtpcWindow *win)
                                     GTK_STYLE_CLASS_SIDEBAR);
         gtk_widget_set_size_request (vbox, -1, 50);
         gtk_paned_pack1(GTK_PANED(priv->sidebar), vbox, TRUE, FALSE);
+
+	/* device folder tree */
 
 	/* statusbar */
 	priv->statusbar = mtpc_statusbar_new();
@@ -463,6 +470,7 @@ static void mtpc_window_init(MtpcWindow *win)
 	priv->device_properties_box = gtk_box_new(GTK_ORIENTATION_VERTICAL,0);
         gtk_paned_pack2(GTK_PANED(priv->sidebar),
 			priv->device_properties_box, TRUE, FALSE);
+	gtk_widget_hide(priv->device_properties_box);
 
 
 	/* add the main_vbox to the container */
