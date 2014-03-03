@@ -27,6 +27,7 @@
 #include "mtpc-actions-callbacks.h"
 #include "mtpc-devicelist.h"
 #include "mtpc-statusbar.h"
+#include "mtpc-home-folder-tree.h"
 
 typedef struct {
 	GtkWidget *grid;
@@ -35,7 +36,10 @@ typedef struct {
 
 	GtkWidget *right_container;
 	GtkWidget *left_container;
+
+	GtkWidget *home_scrolled;
 	GtkWidget *home_folder_tree;
+
 	GtkWidget *device_folder_tree;
 	GtkWidget *sidebar;
 	GtkWidget *device_properties_box;
@@ -227,14 +231,31 @@ static void paste_cb(GSimpleAction *action,
 {
 }
 
+static void _mtpc_window_set_home_folder_visibility(GtkWidget *home_folder,
+						    gboolean visible)
+{
+	if (visible) {
+		gtk_widget_show(home_folder);
+	} else {
+		gtk_widget_hide(home_folder);
+	}
+}
+
 static void change_home_folder_view_state(GSimpleAction *action,
 					  GVariant      *state,
 					  gpointer       user_data)
 {
+	MtpcWindow *window = MTPC_WINDOW(user_data);
+	MtpcWindowPrivate *priv = mtpc_window_get_instance_private(window);
+
 	if (g_variant_get_boolean(state)) {
 		printf("show home folder\n");
+		_mtpc_window_set_home_folder_visibility(priv->home_scrolled,
+							TRUE);
 	} else {
 		printf("hide home folder\n");
+		_mtpc_window_set_home_folder_visibility(priv->home_scrolled,
+							FALSE);
 	}
 
 	g_simple_action_set_state(action, state);
@@ -345,7 +366,7 @@ static GActionEntry win_entries[] = {
         { "copy", copy_cb, NULL, NULL, NULL },
         { "paste", paste_cb, NULL, NULL, NULL },
 	/* view */
-        { "toggle-home-folder", toggle_action_activated, NULL, "false", change_home_folder_view_state },
+        { "toggle-home-folder", toggle_action_activated, NULL, "true", change_home_folder_view_state },
         { "toggle-device-properties", toggle_action_activated, NULL, "true", change_device_properties_view },
         { "toggle-status-bar", toggle_action_activated, NULL, "true", change_statusbar_view_state },
 };
@@ -415,8 +436,6 @@ static void mtpc_window_init(MtpcWindow *win)
         gtk_paned_pack1(GTK_PANED(priv->right_container),
 			priv->left_container, TRUE, TRUE);
 
-	/* home folder tree */
-
 	/* sidebar */
         priv->sidebar = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
         gtk_paned_pack1(GTK_PANED(priv->left_container),
@@ -471,6 +490,23 @@ static void mtpc_window_init(MtpcWindow *win)
         gtk_paned_pack2(GTK_PANED(priv->sidebar),
 			priv->device_properties_box, TRUE, FALSE);
 	gtk_widget_hide(priv->device_properties_box);
+
+	/* home folder tree */
+	priv->home_scrolled = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(priv->home_scrolled),
+                                       GTK_POLICY_AUTOMATIC,
+                                       GTK_POLICY_AUTOMATIC);
+	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(priv->home_scrolled),
+                                            GTK_SHADOW_IN);
+	gtk_widget_show(priv->home_scrolled);
+
+	priv->home_folder_tree = mtpc_home_folder_tree_new();
+	gtk_container_add(GTK_CONTAINER(priv->home_scrolled),
+			  priv->home_folder_tree);
+
+        gtk_paned_pack2(GTK_PANED(priv->right_container),
+			priv->home_scrolled, TRUE, TRUE);
+
 
 
 	/* add the main_vbox to the container */

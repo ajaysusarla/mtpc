@@ -35,6 +35,8 @@ enum {
 typedef struct {
 	int remove;
 	GtkListStore *list_store;
+	GtkCellRenderer *name_text_renderer;
+	GtkCellRenderer *size_text_renderer;
 
 	/* d-n-d */
 	gboolean drag_source_enabled;
@@ -55,6 +57,62 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcHomeFolderTree,
 			   GTK_TYPE_TREE_VIEW);
 
 
+/* internal */
+static void add_columns(MtpcHomeFolderTree *folder_tree,
+			GtkTreeView *treeview)
+{
+	GtkTreeViewColumn *column;
+	MtpcHomeFolderTreePrivate *priv;
+
+	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
+
+
+	/* folder/file name */
+	column = gtk_tree_view_column_new();
+	gtk_tree_view_column_set_spacing(column, 1);
+        gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_AUTOSIZE);
+        gtk_tree_view_column_set_resizable(column, TRUE);
+        gtk_tree_view_column_set_sort_column_id(column, COLUMN_NAME);
+        gtk_tree_view_column_set_title(column, "Name");
+
+	priv->name_text_renderer = gtk_cell_renderer_text_new();
+
+	g_object_set(priv->name_text_renderer,
+		     "ellipsize", PANGO_ELLIPSIZE_END,
+		     NULL);
+
+	gtk_tree_view_column_pack_start(column, priv->name_text_renderer, TRUE);
+	gtk_tree_view_column_set_attributes(column, priv->name_text_renderer,
+					    "text", COLUMN_NAME,
+					    NULL);
+
+        gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+        gtk_tree_view_set_expander_column(GTK_TREE_VIEW(treeview), column);
+
+
+	/* size */
+	column = gtk_tree_view_column_new();
+	gtk_tree_view_column_set_spacing(column, 1);
+        gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_AUTOSIZE);
+        gtk_tree_view_column_set_resizable(column, TRUE);
+        gtk_tree_view_column_set_sort_column_id(column, COLUMN_SIZE);
+        gtk_tree_view_column_set_title(column, "Size");
+
+	priv->size_text_renderer = gtk_cell_renderer_text_new();
+
+	g_object_set(priv->size_text_renderer,
+		     "ellipsize", PANGO_ELLIPSIZE_END,
+		     NULL);
+
+	gtk_tree_view_column_pack_start(column, priv->size_text_renderer, TRUE);
+	gtk_tree_view_column_set_attributes(column, priv->size_text_renderer,
+					    "text", COLUMN_SIZE,
+					    NULL);
+
+        gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+        gtk_tree_view_set_expander_column(GTK_TREE_VIEW(treeview), column);
+
+}
 
 /* class implementation */
 static void mtpc_home_folder_tree_finalize(GObject *object)
@@ -86,6 +144,14 @@ static void mtpc_home_folder_tree_init(MtpcHomeFolderTree *folder_tree)
 	gtk_tree_view_set_model(GTK_TREE_VIEW(folder_tree),
 				GTK_TREE_MODEL(priv->list_store));
 	gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(folder_tree), TRUE);
+
+	add_columns(folder_tree, GTK_TREE_VIEW(folder_tree));
+	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(folder_tree), TRUE);
+	gtk_tree_view_set_enable_search(GTK_TREE_VIEW(folder_tree), TRUE);
+	gtk_tree_view_set_search_column(GTK_TREE_VIEW(folder_tree), COLUMN_NAME);
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(folder_tree));
+	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 }
 
 /* public functions */

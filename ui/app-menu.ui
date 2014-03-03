@@ -78,6 +78,7 @@
 	<item>
 	  <attribute name='label' translatable='yes'>_Home Folder</attribute>
 	  <attribute name='action'>win.toggle-home-folder</attribute>
+          <attribute name="accel"><![CDATA[<Ctrl>3]]></attribute>
 	</item>
 	<item>
 	  <attribute name='label' translatable='yes'>Device _Properties</attribute>
