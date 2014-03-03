@@ -57,11 +57,8 @@ static gboolean update_statusbar(gpointer data)
 {
 	MtpcStatusbar *statusbar = MTPC_STATUSBAR(data);
 
-	mtpc_statusbar_set_list_info(statusbar, "|");
-	mtpc_statusbar_set_list_info(statusbar, "/");
-	mtpc_statusbar_set_list_info(statusbar, "-");
-	mtpc_statusbar_set_list_info(statusbar, "\\");
-	mtpc_statusbar_set_list_info(statusbar, "|");
+	MTPC_STATUSBAR_UPDATE(statusbar, "", "Fetching device information", "");
+
 	return TRUE;
 }
 
@@ -107,9 +104,12 @@ static void fetch_devices_task_finish(GObject *self,
 				      gpointer task_data)
 {
 	DeviceAsyncFetchData *data =  (DeviceAsyncFetchData *)task_data;
+	MtpcWindowPrivate *priv = mtpc_window_get_instance_private(data->window);
 
 	g_return_val_if_fail(g_task_is_valid(result, self), NULL);
 	g_source_remove (data->func_ref);
+
+	MTPC_STATUSBAR_UPDATE(MTPC_STATUSBAR(priv->statusbar), "", "Ready", "");
 }
 
 static void fetch_devices_task_thread_func(GTask *task,
