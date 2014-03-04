@@ -40,3 +40,12 @@ void _g_object_unref(gpointer object)
         if (object != NULL)
                 g_object_unref(object);
 }
+
+void _g_string_list_free(GList *string_list)
+{
+	if (string_list == NULL)
+		return;
+
+	g_list_foreach(string_list, (GFunc)g_free, NULL);
+	g_list_free(string_list);
+}
