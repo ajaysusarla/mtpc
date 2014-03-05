@@ -44,6 +44,16 @@ ui_dir = $(UIDIR)
 icon_dir = $(ICONDIR)
 endif
 
+# Platform
+UNAME := $(shell $(CC) -dumpmachine 2>&1 | grep -E -o "linux|darwin")
+
+ifeq ($(UNAME), linux)
+	OSSUPPORT = linux
+	OSSUPPORT_CFLAGS =
+else ifeq ($(UNAME), darwin)
+	OSSUPPORT = darwin
+	OSSUPPORT_CFLAGS += -DDARWIN
+endif
 
 # Dependencies
 LIBMTP = $(shell $(PKGCONFIG) --libs libmtp)
@@ -55,27 +65,20 @@ GLIB2CFLAGS = $(shell $(PKGCONFIG) --cflags glib-2.0)
 GTKCFLAGS = $(shell $(PKGCONFIG) --cflags gtk+-3.0)
 GTHREADCFLAGS = $(shell $(PKGCONFIG) --cflags gthread-2.0)
 
-
-ifeq ($(UNAME), linux)
-	OSSUPPORT = linux
-	OSSUPPORT_CFLAGS = $(GTKCFLAGS)
-endif
-
 LIBS = $(LIBMTP) $(LIBGTK) $(LIBGTHREAD)
 LDFLAGS =
 
 EXTRA_FLAGS +=	$(GTKCFLAGS) $(GLIB2CFLAGS) $(GTHREADCFLAGS) \
 		$(LIBMTPCFLAGS) -DVERSION_STRING='"$(VERSION)"' \
-		-DMTPC_UI_DIR='"$(ui_dir)"' -DMTPC_ICON_DIR='"$(icon_dir)"'
-
-# Platform
-UNAME := $(shell $(CC) -dumpmachine 2>&1 | grep -E -o "linux|darwin")
+		-DMTPC_UI_DIR='"$(ui_dir)"' -DMTPC_ICON_DIR='"$(icon_dir)"' \
+		$(OSSUPPORT_CFLAGS)
 
 # Object files
 OBJS =  main.o \
-	mtpc-app.o \
 	gtk-utils.o \
 	glib-utils.o \
+	gio-utils.o \
+	mtpc-app.o \
 	mtpc-window.o \
 	mtpc-actions-callbacks.o \
 	mtpc-device.o \
@@ -86,9 +89,10 @@ OBJS =  main.o \
 
 # Headers
 HDRS = 	main.h \
-	mtpc-app.h \
 	gtk-utils.h \
 	glib-utils.h \
+	gio-utils.h \
+	mtpc-app.h \
 	mtpc-window.h \
 	mtpc-actions-callbacks.h \
 	mtpc-device.h \
