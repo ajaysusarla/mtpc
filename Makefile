@@ -85,6 +85,7 @@ OBJS =  main.o \
 	mtpc-devicelist.o \
 	mtpc-statusbar.o \
 	mtpc-home-folder-tree.o \
+	mtpc-file-data.o \
 	$(NULL)
 
 # Headers
@@ -99,6 +100,7 @@ HDRS = 	main.h \
 	mtpc-devicelist.h \
 	mtpc-statusbar.h \
 	mtpc-home-folder-tree.h \
+	mtpc-file-data.h \
 	$(NULL)
 
 DEPS = $(wildcard .dep/*.dep)
