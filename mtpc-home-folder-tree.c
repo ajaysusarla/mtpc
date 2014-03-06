@@ -179,6 +179,7 @@ GtkWidget *mtpc_home_folder_tree_new(void)
 }
 
 void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
+				    GFile *parent,
 				    GList *file_list)
 {
 	MtpcHomeFolderTreePrivate *priv;
@@ -191,6 +192,35 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
 
 	gtk_tree_store_clear(priv->tree_store);
+
+	if (parent) {
+		GFileInfo *parent_info;
+		GError *error;
+		GtkTreeIter iter;
+		GIcon *icon;
+
+		parent_info = g_file_query_info(parent,
+						"*",
+						G_FILE_QUERY_INFO_NONE,
+						NULL,
+						&error);
+
+		icon = g_themed_icon_new("folder-symbolic");
+
+		gtk_tree_store_append(priv->tree_store, &iter, NULL);
+
+		gtk_tree_store_set(priv->tree_store, &iter,
+				   COLUMN_TYPE, G_FILE_TYPE_DIRECTORY,
+				   COLUMN_ICON, icon,
+				   COLUMN_NAME, "../",
+				   COLUMN_SIZE, "",
+				   COLUMN_INFO, parent_info,
+				   -1);
+
+
+		g_object_unref(icon);
+		g_object_unref(parent_info);
+	}
 
 	while(l) {
 		GFileInfo *info = l->data;
@@ -223,8 +253,11 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 					   COLUMN_SIZE, size,
 					   COLUMN_INFO, info,
 					   -1);
+
+			g_object_unref(icon);
 		}
 
 		l = l->next;
 	}
+
 }
