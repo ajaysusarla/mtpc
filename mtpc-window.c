@@ -331,6 +331,48 @@ static void _mtpc_window_set_default_size(GtkWidget *window, GdkScreen *screen)
         gtk_window_set_default_size(GTK_WINDOW(window), max_width, max_height);
 }
 
+static void _mtpc_window_setup_home_folder(MtpcHomeFolderTree *folder_tree)
+{
+	GFileEnumerator *enumerator;
+	GError *error;
+	GFile *file;
+	GFileInfo *info;
+	const char *home;
+	GList *flist = NULL;
+
+	/* FIXME, check getpwuid() if this fails */
+	home = g_getenv("HOME");
+	if (home == NULL) {
+		return;
+	}
+
+	file = g_file_new_for_path(home);
+
+	enumerator = g_file_enumerate_children(file,
+                                               "*",
+					       G_FILE_QUERY_INFO_NONE,
+					       NULL,
+					       &error);
+
+	if (enumerator == NULL) {
+		_g_object_unref(file);
+		return;
+	}
+
+	do {
+		info = g_file_enumerator_next_file(enumerator,
+						   NULL,
+						   &error);
+
+		if (info == NULL)
+			break;
+
+		flist = g_list_prepend(flist, info);
+	} while (1);
+
+	mtpc_home_folder_tree_set_list(folder_tree, flist);
+}
+
 static GtkWidget *_mtpc_window_create_toolbar()
 {
 	GtkWidget *toolbar;
@@ -508,6 +550,7 @@ static void mtpc_window_init(MtpcWindow *win)
 			priv->home_scrolled, TRUE, TRUE);
 
 
+	_mtpc_window_setup_home_folder(priv->home_folder_tree);
 
 	/* add the main_vbox to the container */
 	gtk_grid_attach(GTK_GRID(priv->grid), priv->main_vbox, 0, 1, 1, 1);
