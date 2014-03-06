@@ -36,6 +36,15 @@ struct _MtpcHomeFolderTree {
 
 struct _MtpcHomeFolderTreeClass {
 	GtkTreeViewClass parent_class;
+
+        void (*folder_popup) (MtpcHomeFolderTree *folder_tree,
+                              GFileInfo *info);
+
+        void (*load) (MtpcHomeFolderTree *folder_tree,
+                              GFileInfo *info);
+
+        void (*open) (MtpcHomeFolderTree *folder_tree,
+                              GFileInfo *info);
 };
 
 

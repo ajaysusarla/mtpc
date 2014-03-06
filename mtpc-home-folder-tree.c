@@ -17,6 +17,7 @@
  */
 
 #include "mtpc-home-folder-tree.h"
+#include "glib-utils.h"
 
 typedef enum {
 	ENTRY_TYPE_FILE,
@@ -24,6 +25,13 @@ typedef enum {
 	ENTRY_TYPE_CWD,
 	ENTRY_TYPE_PARENT
 } EntryType;
+
+enum {
+        FOLDER_POPUP,
+        LOAD,
+        OPEN,
+        LAST_SIGNAL
+};
 
 enum {
 	COLUMN_TYPE,
@@ -54,12 +62,50 @@ typedef struct {
 } MtpcHomeFolderTreePrivate;
 
 
+static guint mtpc_home_folder_tree_signals[LAST_SIGNAL] = { 0 };
+
 G_DEFINE_TYPE_WITH_PRIVATE(MtpcHomeFolderTree,
 			   mtpc_home_folder_tree,
 			   GTK_TYPE_TREE_VIEW);
 
-
 /* internal */
+static gboolean button_press_cb(GtkWidget *widget,
+			       GdkEventButton *event,
+			       gpointer user_data)
+{
+	gboolean retval;
+
+	retval = FALSE;
+
+	return retval;
+}
+
+static gboolean button_release_event_cb(GtkWidget *widget,
+					GdkEventButton *event,
+					gpointer user_data)
+{
+	return FALSE;
+}
+
+static gboolean popup_menu_cb(GtkWidget *widget, gpointer user_data)
+{
+	return TRUE;
+}
+
+static gboolean selection_changed_cb(GtkTreeSelection *selection,
+				     gpointer user_data)
+{
+	return FALSE;
+}
+
+static gboolean row_activated_cb(GtkTreeView *tree_view,
+				 GtkTreePath *path,
+				 GtkTreeViewColumn *column,
+				 gpointer user_data)
+{
+	return TRUE;
+}
+
 static void add_columns(MtpcHomeFolderTree *folder_tree,
 			GtkTreeView *treeview)
 {
@@ -135,9 +181,50 @@ static void mtpc_home_folder_tree_finalize(GObject *object)
 static void mtpc_home_folder_tree_class_init(MtpcHomeFolderTreeClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS(klass);
+	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS(klass);
 
 
 	object_class->finalize = mtpc_home_folder_tree_finalize;
+
+	widget_class->drag_begin = NULL;
+
+
+        mtpc_home_folder_tree_signals[FOLDER_POPUP] =
+                g_signal_new("folder_popup",
+                             G_TYPE_FROM_CLASS(klass),
+                             G_SIGNAL_RUN_LAST,
+                             G_STRUCT_OFFSET(MtpcHomeFolderTreeClass,
+					     folder_popup),
+                             NULL, NULL,
+                             g_cclosure_marshal_VOID__POINTER,
+                             G_TYPE_NONE,
+                             1,
+                             G_TYPE_POINTER);
+
+        mtpc_home_folder_tree_signals[LOAD] =
+                g_signal_new("load",
+                             G_TYPE_FROM_CLASS(klass),
+                             G_SIGNAL_RUN_LAST,
+                             G_STRUCT_OFFSET(MtpcHomeFolderTreeClass,
+					     load),
+                             NULL, NULL,
+                             g_cclosure_marshal_VOID__POINTER,
+                             G_TYPE_NONE,
+                             1,
+                             G_TYPE_POINTER);
+
+        mtpc_home_folder_tree_signals[OPEN] =
+                g_signal_new("open",
+                             G_TYPE_FROM_CLASS(klass),
+                             G_SIGNAL_RUN_LAST,
+                             G_STRUCT_OFFSET(MtpcHomeFolderTreeClass,
+					     open),
+                             NULL, NULL,
+                             g_cclosure_marshal_VOID__POINTER,
+                             G_TYPE_NONE,
+                             1,
+                             G_TYPE_POINTER);
+
 }
 
 static void mtpc_home_folder_tree_init(MtpcHomeFolderTree *folder_tree)
@@ -166,6 +253,28 @@ static void mtpc_home_folder_tree_init(MtpcHomeFolderTree *folder_tree)
 
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(folder_tree));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
+	g_signal_connect(selection, "changed",
+                         G_CALLBACK(selection_changed_cb),
+                         folder_tree);
+
+
+	/* signal handlers */
+	g_signal_connect(folder_tree,
+			 "popup-menu",
+			 G_CALLBACK(popup_menu_cb),
+			 folder_tree);
+	g_signal_connect(folder_tree,
+			 "button-press-event",
+			 G_CALLBACK(button_press_cb),
+			 folder_tree);
+	g_signal_connect(folder_tree,
+			 "button-release-event",
+			 G_CALLBACK(button_release_event_cb),
+			 folder_tree);
+	g_signal_connect(folder_tree,
+			 "row-activated",
+			 G_CALLBACK(row_activated_cb),
+			 folder_tree);
 }
 
 /* public functions */
@@ -254,9 +363,10 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 					   COLUMN_INFO, info,
 					   -1);
 
-			g_object_unref(icon);
+			_g_object_unref(icon);
 		}
 
+		_g_object_unref(info);
 		l = l->next;
 	}
 
