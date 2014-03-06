@@ -331,11 +331,12 @@ static void _mtpc_window_set_default_size(GtkWidget *window, GdkScreen *screen)
         gtk_window_set_default_size(GTK_WINDOW(window), max_width, max_height);
 }
 
-static void _mtpc_window_setup_home_folder(MtpcHomeFolderTree *folder_tree)
+static void _mtpc_window_setup_home_folder(GtkWidget *widget)
 {
+	MtpcHomeFolderTree *folder_tree = MTPC_HOME_FOLDER_TREE(widget);
 	GFileEnumerator *enumerator;
 	GError *error;
-	GFile *file;
+	GFile *file, *parent;
 	GFileInfo *info;
 	const char *home;
 	GList *flist = NULL;
@@ -347,6 +348,7 @@ static void _mtpc_window_setup_home_folder(MtpcHomeFolderTree *folder_tree)
 	}
 
 	file = g_file_new_for_path(home);
+	parent = g_file_get_parent(file);
 
 	enumerator = g_file_enumerate_children(file,
                                                "*",
@@ -370,7 +372,9 @@ static void _mtpc_window_setup_home_folder(MtpcHomeFolderTree *folder_tree)
 		flist = g_list_prepend(flist, info);
 	} while (1);
 
-	mtpc_home_folder_tree_set_list(folder_tree, flist);
+	flist = g_list_reverse(flist);
+
+	mtpc_home_folder_tree_set_list(folder_tree, parent, flist);
 }
 
 static GtkWidget *_mtpc_window_create_toolbar()
