@@ -43,4 +43,7 @@ GType mtpc_home_folder_tree_get_type(void);
 
 GtkWidget *mtpc_home_folder_tree_new(void);
 
+void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
+				    GList *file_list);
+
 #endif /* MTPC_HOME_FOLDER_TREE_H */

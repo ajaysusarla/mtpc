@@ -29,6 +29,7 @@ enum {
 	COLUMN_TYPE,
 	COLUMN_NAME,
 	COLUMN_SIZE,
+	COLUMN_INFO,
 	NUM_COLUMNS
 };
 
@@ -139,7 +140,8 @@ static void mtpc_home_folder_tree_init(MtpcHomeFolderTree *folder_tree)
 	priv->list_store = gtk_list_store_new(NUM_COLUMNS,
 					      G_TYPE_INT,
 					      G_TYPE_STRING,
-					      G_TYPE_INT);
+					      G_TYPE_STRING,
+					      G_TYPE_POINTER);
 
 	gtk_tree_view_set_model(GTK_TREE_VIEW(folder_tree),
 				GTK_TREE_MODEL(priv->list_store));
@@ -162,4 +164,44 @@ GtkWidget *mtpc_home_folder_tree_new(void)
 	folder_tree = g_object_new(MTPC_TYPE_HOME_FOLDER_TREE, NULL);
 
 	return GTK_WIDGET(folder_tree);
+}
+
+void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
+				    GList *file_list)
+{
+	MtpcHomeFolderTreePrivate *priv;
+	GList *l;
+
+	if (file_list == NULL)
+		return;
+
+	l = file_list;
+	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
+
+	gtk_list_store_clear(priv->list_store);
+
+	while(l) {
+		GFileInfo *info = l->data;
+		GtkTreeIter iter;
+		const char *name;
+		char size[20];
+
+		if (!g_file_info_get_is_hidden(info)) {
+
+			name = g_file_info_get_name(info);
+
+			sprintf(size, "%dKB", (int)g_file_info_get_size(info)/1024);
+
+			gtk_list_store_append(priv->list_store, &iter);
+
+			gtk_list_store_set(priv->list_store, &iter,
+					   COLUMN_TYPE, g_file_info_get_file_type(info),
+					   COLUMN_NAME, name,
+					   COLUMN_SIZE, size,
+					   COLUMN_INFO, info,
+					   -1);
+		}
+
+		l = l->next;
+	}
 }
