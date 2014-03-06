@@ -21,7 +21,7 @@
 
 #include <gtk/gtk.h>
 
-#define APP_NAME "mtpc"
+#define APP_NAME "MTPc"
 
 #define MTPC_TYPE_APP              (mtpc_app_get_type())
 #define MTPC_APP(obj)              (G_TYPE_CHECK_INSTANCE_CAST((obj), MTPC_TYPE_APP, MtpcApp))
