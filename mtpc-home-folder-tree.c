@@ -27,6 +27,7 @@ typedef enum {
 
 enum {
 	COLUMN_TYPE,
+	COLUMN_ICON,
 	COLUMN_NAME,
 	COLUMN_SIZE,
 	COLUMN_INFO,
@@ -35,7 +36,7 @@ enum {
 
 typedef struct {
 	int remove;
-	GtkListStore *list_store;
+	GtkTreeStore *tree_store;
 	GtkCellRenderer *name_text_renderer;
 	GtkCellRenderer *size_text_renderer;
 
@@ -62,14 +63,24 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcHomeFolderTree,
 static void add_columns(MtpcHomeFolderTree *folder_tree,
 			GtkTreeView *treeview)
 {
+	GtkCellRenderer *renderer;
 	GtkTreeViewColumn *column;
 	MtpcHomeFolderTreePrivate *priv;
 
 	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
 
+	column = gtk_tree_view_column_new();
+
+	renderer = gtk_cell_renderer_pixbuf_new ();
+	g_object_set (renderer,
+		      "follow-state", TRUE,
+		      NULL);
+	gtk_tree_view_column_pack_start (column, renderer, FALSE);
+	gtk_tree_view_column_set_attributes (column, renderer,
+					     "gicon", COLUMN_ICON,
+					     NULL);
 
 	/* folder/file name */
-	column = gtk_tree_view_column_new();
 	gtk_tree_view_column_set_spacing(column, 1);
         gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_AUTOSIZE);
         gtk_tree_view_column_set_resizable(column, TRUE);
@@ -137,14 +148,15 @@ static void mtpc_home_folder_tree_init(MtpcHomeFolderTree *folder_tree)
 	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
 
 
-	priv->list_store = gtk_list_store_new(NUM_COLUMNS,
+	priv->tree_store = gtk_tree_store_new(NUM_COLUMNS,
 					      G_TYPE_INT,
+					      G_TYPE_ICON,
 					      G_TYPE_STRING,
 					      G_TYPE_STRING,
 					      G_TYPE_POINTER);
 
 	gtk_tree_view_set_model(GTK_TREE_VIEW(folder_tree),
-				GTK_TREE_MODEL(priv->list_store));
+				GTK_TREE_MODEL(priv->tree_store));
 	gtk_tree_view_set_rules_hint(GTK_TREE_VIEW(folder_tree), TRUE);
 
 	add_columns(folder_tree, GTK_TREE_VIEW(folder_tree));
@@ -178,24 +190,35 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 	l = file_list;
 	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
 
-	gtk_list_store_clear(priv->list_store);
+	gtk_tree_store_clear(priv->tree_store);
 
 	while(l) {
 		GFileInfo *info = l->data;
 		GtkTreeIter iter;
+		GIcon *icon;
 		const char *name;
 		char size[20];
+		GFileType ftype;
 
 		if (!g_file_info_get_is_hidden(info)) {
 
 			name = g_file_info_get_name(info);
 
 			sprintf(size, "%dKB", (int)g_file_info_get_size(info)/1024);
+			ftype = g_file_info_get_file_type(info);
 
-			gtk_list_store_append(priv->list_store, &iter);
+			if (ftype == G_FILE_TYPE_DIRECTORY)
+				icon = g_themed_icon_new("folder-symbolic");
+			else if (ftype == G_FILE_TYPE_REGULAR)
+				icon = g_themed_icon_new("folder-documents-symbolic");
+			else
+				icon = g_themed_icon_new("text-x-generic-symbolic");
 
-			gtk_list_store_set(priv->list_store, &iter,
-					   COLUMN_TYPE, g_file_info_get_file_type(info),
+			gtk_tree_store_append(priv->tree_store, &iter, NULL);
+
+			gtk_tree_store_set(priv->tree_store, &iter,
+					   COLUMN_TYPE, ftype,
+					   COLUMN_ICON, icon,
 					   COLUMN_NAME, name,
 					   COLUMN_SIZE, size,
 					   COLUMN_INFO, info,
