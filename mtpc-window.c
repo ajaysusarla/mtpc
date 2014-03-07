@@ -351,7 +351,7 @@ static void _mtpc_window_setup_home_folder(GtkWidget *widget)
 	parent = g_file_get_parent(file);
 
 	enumerator = g_file_enumerate_children(file,
-                                               "*",
+					       "standard::*",
 					       G_FILE_QUERY_INFO_NONE,
 					       NULL,
 					       &error);
@@ -362,6 +362,7 @@ static void _mtpc_window_setup_home_folder(GtkWidget *widget)
 	}
 
 	do {
+		GFile *gfile;
 		info = g_file_enumerator_next_file(enumerator,
 						   NULL,
 						   &error);
@@ -369,7 +370,9 @@ static void _mtpc_window_setup_home_folder(GtkWidget *widget)
 		if (info == NULL)
 			break;
 
-		flist = g_list_prepend(flist, info);
+		gfile = g_file_enumerator_get_child(enumerator, info);
+
+		flist = g_list_prepend(flist, gfile);
 	} while (1);
 
 	flist = g_list_reverse(flist);
