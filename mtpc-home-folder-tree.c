@@ -434,7 +434,7 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 		GtkTreeIter iter;
 		GIcon *icon;
 
-		icon = g_themed_icon_new("folder-symbolic");
+		icon = g_themed_icon_new("folder");
 
 		gtk_tree_store_append(priv->tree_store, &iter, NULL);
 
@@ -447,7 +447,7 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 				   -1);
 
 
-		g_object_unref(icon);
+		_g_object_unref(icon);
 	}
 
 	while(l) {
@@ -473,13 +473,7 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 			sprintf(size, "%dKB", (int)g_file_info_get_size(info)/1024);
 			ftype = g_file_info_get_file_type(info);
 
-
-			if (ftype == G_FILE_TYPE_DIRECTORY)
-				icon = g_themed_icon_new("folder-symbolic");
-			else if (ftype == G_FILE_TYPE_REGULAR)
-				icon = g_themed_icon_new("folder-documents-symbolic");
-			else
-				icon = g_themed_icon_new("text-x-generic-symbolic");
+			icon = g_file_info_get_icon(info);
 
 			gtk_tree_store_append(priv->tree_store, &iter, NULL);
 
@@ -491,7 +485,6 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 					   COLUMN_GFILE, gfile,
 					   -1);
 
-			_g_object_unref(icon);
 		}
 
 		_g_object_unref(info);
