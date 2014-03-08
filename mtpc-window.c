@@ -377,7 +377,7 @@ static void _mtpc_window_setup_home_folder(GtkWidget *widget)
 
 	flist = g_list_reverse(flist);
 
-	mtpc_home_folder_tree_set_list(folder_tree, parent, flist);
+	mtpc_home_folder_tree_set_list(folder_tree, home, parent, flist);
 }
 
 static GtkWidget *_mtpc_window_create_toolbar()

@@ -49,11 +49,11 @@ struct _MtpcHomeFolderTreeClass {
 
 
 GType mtpc_home_folder_tree_get_type(void);
-
 GtkWidget *mtpc_home_folder_tree_new(void);
-
 void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
+				    const char *current_path,
 				    GFile *parent,
 				    GList *file_list);
+void mpc_home_folder_tree_clear(MtpcHomeFolderTree *folder_tree);
 
 #endif /* MTPC_HOME_FOLDER_TREE_H */

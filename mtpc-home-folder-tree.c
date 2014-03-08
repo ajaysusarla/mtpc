@@ -150,7 +150,32 @@ static gboolean button_release_event_cb(GtkWidget *widget,
 
 static gboolean popup_menu_cb(GtkWidget *widget, gpointer user_data)
 {
-	printf("popup_menu_cb\n");
+	MtpcHomeFolderTree *folder_tree = MTPC_HOME_FOLDER_TREE(user_data);
+	MtpcHomeFolderTreePrivate *priv;
+	GtkTreeStore *tree_store;
+	GtkTreeIter iter;
+	GFile *gfile;
+
+	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
+	tree_store = priv->tree_store;
+
+	if (gtk_tree_selection_get_selected(gtk_tree_view_get_selection(GTK_TREE_VIEW(folder_tree)), NULL, &iter)) {
+
+			gtk_tree_model_get(GTK_TREE_MODEL(tree_store),
+					   &iter,
+					   COLUMN_GFILE, &gfile,
+					   -1);
+
+			if (!gfile)
+				return FALSE;
+	}
+
+	g_signal_emit(folder_tree,
+		      mtpc_home_folder_tree_signals[FOLDER_POPUP],
+		      0,
+		      gfile);
+
+
 	return TRUE;
 }
 
@@ -161,6 +186,7 @@ static gboolean selection_changed_cb(GtkTreeSelection *selection,
 	return FALSE;
 }
 
+/*
 static void open_folder(MtpcHomeFolderTree *folder_tree, GFile *gfile)
 {
 	GFile *parent;
@@ -168,8 +194,11 @@ static void open_folder(MtpcHomeFolderTree *folder_tree, GFile *gfile)
 	GFileEnumerator *enumerator;
 	GError *error;
 	GFileInfo *info;
+	const char *path;
 
 	parent = g_file_get_parent(gfile);
+
+	path = g_file_get_path(gfile);
 
 	enumerator = g_file_enumerate_children(gfile,
 					       "standard::*",
@@ -201,8 +230,17 @@ static void open_folder(MtpcHomeFolderTree *folder_tree, GFile *gfile)
 	flist = g_list_reverse(flist);
 
 	mtpc_home_folder_tree_set_list(folder_tree,
+				       path,
 				       parent,
 				       flist);
+}
+*/
+
+static void open_folder(MtpcHomeFolderTree *folder_tree, GFile *gfile)
+{
+	g_signal_emit(folder_tree,
+		      mtpc_home_folder_tree_signals[OPEN],
+		      0, gfile);
 }
 
 static gboolean row_activated_cb(GtkTreeView *tree_view,
@@ -416,6 +454,7 @@ GtkWidget *mtpc_home_folder_tree_new(void)
 }
 
 void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
+				    const char *current_path,
 				    GFile *parent,
 				    GList *file_list)
 {
@@ -429,6 +468,8 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
 
 	gtk_tree_store_clear(priv->tree_store);
+
+	printf("CURRENT_PATH:%s\n", current_path);
 
 	if (parent) {
 		GtkTreeIter iter;
@@ -491,4 +532,8 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 		l = l->next;
 	}
 
+}
+
+void mtpc_home_folder_tree_clear(MtpcHomeFolderTree *folder_tree)
+{
 }
