@@ -186,56 +186,6 @@ static gboolean selection_changed_cb(GtkTreeSelection *selection,
 	return FALSE;
 }
 
-/*
-static void open_folder(MtpcHomeFolderTree *folder_tree, GFile *gfile)
-{
-	GFile *parent;
-	GList *flist = NULL;
-	GFileEnumerator *enumerator;
-	GError *error;
-	GFileInfo *info;
-	const char *path;
-
-	parent = g_file_get_parent(gfile);
-
-	path = g_file_get_path(gfile);
-
-	enumerator = g_file_enumerate_children(gfile,
-					       "standard::*",
-					       G_FILE_QUERY_INFO_NONE,
-					       NULL,
-					       &error);
-
-	if (enumerator == NULL) {
-		_g_object_unref(gfile);
-		return;
-	}
-
-	do {
-		GFile *gfile;
-		info = g_file_enumerator_next_file(enumerator,
-						   NULL,
-						   &error);
-
-		if (info == NULL)
-			break;
-
-		gfile = g_file_enumerator_get_child(enumerator, info);
-
-		flist = g_list_prepend(flist, gfile);
-
-		_g_object_unref(info);
-	} while (1);
-
-	flist = g_list_reverse(flist);
-
-	mtpc_home_folder_tree_set_list(folder_tree,
-				       path,
-				       parent,
-				       flist);
-}
-*/
-
 static void open_folder(MtpcHomeFolderTree *folder_tree, GFile *gfile)
 {
 	g_signal_emit(folder_tree,

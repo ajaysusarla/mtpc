@@ -67,6 +67,72 @@ static gboolean update_statusbar(gpointer data)
 }
 
 
+static void home_folder_tree_popup_cb(MtpcHomeFolderTree *folder_tree,
+				      GFile *gfile,
+				      gpointer user_data)
+{
+	printf("home_folder_tree_popup_cb\n");
+}
+
+static void home_folder_tree_open_cb(MtpcHomeFolderTree *folder_tree,
+				     GFile *gfile,
+				     gpointer user_data)
+{
+	MtpcWindow *window = MTPC_WINDOW(user_data);
+	GFile *parent;
+	GList *flist = NULL;
+	GFileEnumerator *enumerator;
+	GError *error;
+	GFileInfo *info;
+	const char *path;
+
+	parent = g_file_get_parent(gfile);
+
+	path = g_file_get_path(gfile);
+
+	enumerator = g_file_enumerate_children(gfile,
+					       "standard::*",
+					       G_FILE_QUERY_INFO_NONE,
+					       NULL,
+					       &error);
+
+	if (enumerator == NULL) {
+		_g_object_unref(gfile);
+		return;
+	}
+
+	do {
+		GFile *gfile;
+		info = g_file_enumerator_next_file(enumerator,
+						   NULL,
+						   &error);
+
+		if (info == NULL)
+			break;
+
+		gfile = g_file_enumerator_get_child(enumerator, info);
+
+		flist = g_list_prepend(flist, gfile);
+
+		_g_object_unref(info);
+	} while (1);
+
+	flist = g_list_reverse(flist);
+
+	mtpc_home_folder_tree_set_list(folder_tree,
+				       path,
+				       parent,
+				       flist);
+}
+
+static void home_folder_tree_load_cb(MtpcHomeFolderTree *folder_tree,
+				     GFile *gfile,
+				     gpointer user_data)
+{
+	MtpcWindow *window = MTPC_WINDOW(user_data);
+	printf("home_folder_tree_load_cb\n");
+}
+
 static void devicelist_device_popup_cb(MtpcDevicelist *devicelist,
 				       Device *device,
 				       gpointer user_data)
@@ -556,6 +622,18 @@ static void mtpc_window_init(MtpcWindow *win)
         gtk_paned_pack2(GTK_PANED(priv->right_container),
 			priv->home_scrolled, TRUE, TRUE);
 
+	g_signal_connect(priv->home_folder_tree,
+			 "folder_popup",
+			 G_CALLBACK(home_folder_tree_popup_cb),
+			 win);
+	g_signal_connect(priv->home_folder_tree,
+			 "open",
+			 G_CALLBACK(home_folder_tree_open_cb),
+			 win);
+	g_signal_connect(priv->home_folder_tree,
+			 "load",
+			 G_CALLBACK(home_folder_tree_load_cb),
+			 win);
 
 	_mtpc_window_setup_home_folder(priv->home_folder_tree);
 
