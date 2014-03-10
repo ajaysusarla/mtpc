@@ -411,15 +411,10 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 	MtpcHomeFolderTreePrivate *priv;
 	GList *l;
 
-	if (file_list == NULL)
-		return;
-
 	l = file_list;
 	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
 
 	gtk_tree_store_clear(priv->tree_store);
-
-	printf("CURRENT_PATH:%s\n", current_path);
 
 	if (parent) {
 		GtkTreeIter iter;
