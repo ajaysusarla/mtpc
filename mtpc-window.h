@@ -44,6 +44,6 @@ struct _MtpcWindowClass {
 
 GType mtpc_window_get_type(void);
 GtkWidget *mtpc_window_new(MtpcApp *application);
-
+void mtpc_window_set_title(MtpcWindow *window, const char *title);
 
 #endif /* MTPC_WINDOW_H */

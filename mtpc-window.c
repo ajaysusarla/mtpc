@@ -30,6 +30,8 @@
 #include "mtpc-home-folder-tree.h"
 
 typedef struct {
+	GtkWidget *headerbar;
+
 	GtkWidget *grid;
 	GtkWidget *toolbar;
 	GtkWidget *main_vbox;
@@ -118,6 +120,8 @@ static void home_folder_tree_open_cb(MtpcHomeFolderTree *folder_tree,
 	} while (1);
 
 	flist = g_list_reverse(flist);
+
+	mtpc_window_set_title(window, path);
 
 	mtpc_home_folder_tree_set_list(folder_tree,
 				       path,
@@ -397,7 +401,7 @@ static void _mtpc_window_set_default_size(GtkWidget *window, GdkScreen *screen)
         gtk_window_set_default_size(GTK_WINDOW(window), max_width, max_height);
 }
 
-static void _mtpc_window_setup_home_folder(GtkWidget *widget)
+static void _mtpc_window_setup_home_folder(MtpcWindow *window, GtkWidget *widget)
 {
 	MtpcHomeFolderTree *folder_tree = MTPC_HOME_FOLDER_TREE(widget);
 	GFileEnumerator *enumerator;
@@ -442,6 +446,8 @@ static void _mtpc_window_setup_home_folder(GtkWidget *widget)
 	} while (1);
 
 	flist = g_list_reverse(flist);
+
+	mtpc_window_set_title(window, home);
 
 	mtpc_home_folder_tree_set_list(folder_tree, home, parent, flist);
 }
@@ -528,6 +534,8 @@ static void mtpc_window_init(MtpcWindow *win)
 	g_action_map_add_action_entries(G_ACTION_MAP(window),
 					win_entries, G_N_ELEMENTS(win_entries),
 					window);
+
+	mtpc_window_set_title(win, "MTPc");
 
 	/* foundation */
 	priv->grid = gtk_grid_new();
@@ -635,7 +643,7 @@ static void mtpc_window_init(MtpcWindow *win)
 			 G_CALLBACK(home_folder_tree_load_cb),
 			 win);
 
-	_mtpc_window_setup_home_folder(priv->home_folder_tree);
+	_mtpc_window_setup_home_folder(win, priv->home_folder_tree);
 
 	/* add the main_vbox to the container */
 	gtk_grid_attach(GTK_GRID(priv->grid), priv->main_vbox, 0, 1, 1, 1);
@@ -658,3 +666,20 @@ GtkWidget *mtpc_window_new(MtpcApp *application)
 	return GTK_WIDGET(window);
 }
 
+void mtpc_window_set_title(MtpcWindow *window, const char *title)
+{
+	g_return_if_fail(window != NULL);
+	gchar *str;
+
+	if (title && strlen(title))
+		str = g_strconcat(title, " - ", APP_NAME, NULL);
+	else
+		str = g_strdup(title);
+
+
+	gtk_window_set_title(GTK_WINDOW(window), str);
+
+	g_free(str);
+
+	return;
+}
