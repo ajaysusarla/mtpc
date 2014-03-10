@@ -133,6 +133,17 @@ static gboolean button_press_cb(GtkWidget *widget,
 
 			retval = TRUE;
 		}
+	} else if ((event->button == 1) && (event->type == GDK_BUTTON_PRESS)) {
+		/* possible start of dragging */
+		if (!(event->state & GDK_CONTROL_MASK)
+		    && !(event->state & GDK_SHIFT_MASK)
+		    && priv->drag_source_enabled) {
+			printf("...dragging..\n");
+			priv->dragging = TRUE;
+			priv->drag_start_x = event->x;
+			priv->drag_start_y = event->y;
+		}
+	} else if ((event->button == 1) && (event->type == GDK_2BUTTON_PRESS)) {
 	}
 
 	gtk_tree_path_free(path);
@@ -144,6 +155,16 @@ static gboolean button_release_event_cb(GtkWidget *widget,
 					GdkEventButton *event,
 					gpointer user_data)
 {
+	MtpcHomeFolderTree *folder_tree = MTPC_HOME_FOLDER_TREE(user_data);
+	MtpcHomeFolderTreePrivate *priv;
+
+	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
+
+	if (priv->dragging) {
+		priv->dragging = FALSE;
+		priv->drag_started = FALSE;
+	}
+
 	printf("button_release_event_cb\n");
 	return FALSE;
 }
@@ -220,6 +241,69 @@ static gboolean row_activated_cb(GtkTreeView *tree_view,
 
 	open_folder(folder_tree, gfile);
 	return TRUE;
+}
+
+static gboolean motion_notify_event_cb(GtkWidget      *widget,
+				       GdkEventButton *event,
+				       gpointer        user_data)
+{
+	MtpcHomeFolderTree *folder_tree = MTPC_HOME_FOLDER_TREE(user_data);
+	MtpcHomeFolderTreePrivate *priv;
+
+	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
+
+	if (!priv->drag_source_enabled)
+		return FALSE;
+
+	if (priv->dragging) {
+		if (!priv->drag_started
+		    && gtk_drag_check_threshold(widget,
+						priv->drag_start_x,
+						priv->drag_start_y,
+						event->x,
+						event->y))
+		{
+			GtkTreePath *path = NULL;
+			GdkDragContext *context;
+			int cell_x;
+			int cell_y;
+			cairo_surface_t *dnd_surface;
+
+			if (!gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(folder_tree),
+							   event->x,
+							   event->y,
+							   &path,
+							   NULL,
+							   &cell_x,
+							   &cell_y))
+				return FALSE;
+
+			gtk_tree_view_set_cursor(GTK_TREE_VIEW(folder_tree),
+						 path,
+						 NULL,
+						 FALSE);
+			priv->drag_started = TRUE;
+
+			context = gtk_drag_begin_with_coordinates(widget,
+								  priv->drag_target_list,
+								  priv->drag_actions,
+								  1,
+								  (GdkEvent *)event,
+								  -1,
+								  -1);
+
+			dnd_surface = gtk_tree_view_create_row_drag_icon(GTK_TREE_VIEW(folder_tree), path);
+			gtk_drag_set_icon_surface(context, dnd_surface);
+			cairo_surface_destroy(dnd_surface);
+			gtk_tree_path_free(path);
+
+			printf("...DRAGGING...\n");
+		}
+
+		return TRUE;
+	}
+
+	return FALSE;
 }
 
 static void add_columns(MtpcHomeFolderTree *folder_tree,
@@ -351,6 +435,11 @@ static void mtpc_home_folder_tree_init(MtpcHomeFolderTree *folder_tree)
 	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
 
 
+	priv->drag_source_enabled = FALSE;
+	priv->dragging  = FALSE;
+	priv->drag_started = FALSE;
+	priv->drag_target_list = NULL;
+
 	priv->tree_store = gtk_tree_store_new(NUM_COLUMNS,
 					      G_TYPE_INT,
 					      G_TYPE_ICON,
@@ -390,6 +479,10 @@ static void mtpc_home_folder_tree_init(MtpcHomeFolderTree *folder_tree)
 	g_signal_connect(folder_tree,
 			 "row-activated",
 			 G_CALLBACK(row_activated_cb),
+			 folder_tree);
+	g_signal_connect(folder_tree,
+			 "motion-notify-event",
+			 G_CALLBACK(motion_notify_event_cb),
 			 folder_tree);
 }
 
@@ -481,4 +574,33 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 
 void mtpc_home_folder_tree_clear(MtpcHomeFolderTree *folder_tree)
 {
+}
+
+void mtpc_home_folder_tree_enable_drag_source(MtpcHomeFolderTree *folder_tree,
+					      GdkModifierType start_button_mask,
+					      const GtkTargetEntry *targets,
+					      int n_targets,
+					      GdkDragAction actions)
+{
+	MtpcHomeFolderTreePrivate *priv;
+
+	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
+
+	if (priv->drag_target_list != NULL)
+		gtk_target_list_unref(priv->drag_target_list);
+
+	priv->drag_source_enabled = TRUE;
+	priv->drag_start_button_mask = start_button_mask;
+	priv->drag_target_list = gtk_target_list_new(targets, n_targets);
+	priv->drag_actions = actions;
+}
+
+
+void mtpc_home_folder_tree_unset_drag_source(MtpcHomeFolderTree *folder_tree)
+{
+	MtpcHomeFolderTreePrivate *priv;
+
+	priv = mtpc_home_folder_tree_get_instance_private(folder_tree);
+
+	priv->drag_source_enabled = FALSE;
 }

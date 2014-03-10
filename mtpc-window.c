@@ -105,6 +105,7 @@ static void home_folder_tree_open_cb(MtpcHomeFolderTree *folder_tree,
 
 	do {
 		GFile *gfile;
+		error = NULL;
 		info = g_file_enumerator_next_file(enumerator,
 						   NULL,
 						   &error);
@@ -157,6 +158,28 @@ static void devicelist_device_load_cb(MtpcDevicelist *devicelist,
 {
 	MtpcWindow *window = MTPC_WINDOW(user_data);
 	printf("devicelist_device_load_cb\n");
+}
+
+static void folder_tree_drag_data_received_cb(GtkWidget        *tree_view,
+					      GdkDragContext   *context,
+					      int               x,
+					      int               y,
+					      GtkSelectionData *selection_data,
+					      guint             info,
+					      guint             time,
+					      gpointer          user_data)
+{
+	printf("DATA RECEIVED\n");
+}
+
+static void folder_tree_drag_data_get_cb(GtkWidget        *widget,
+					 GdkDragContext   *drag_context,
+					 GtkSelectionData *selection_data,
+					 guint             info,
+					 guint             time,
+					 gpointer          user_data)
+{
+	printf("DATA GET\n");
 }
 
 typedef struct {
@@ -629,6 +652,42 @@ static void mtpc_window_init(MtpcWindow *win)
 
         gtk_paned_pack2(GTK_PANED(priv->right_container),
 			priv->home_scrolled, TRUE, TRUE);
+
+	{
+		GtkTargetList *target_list;
+		GtkTargetEntry *targets;
+		int n_targets;
+
+		target_list = gtk_target_list_new(NULL, 0);
+		gtk_target_list_add_uri_targets(target_list, 0);
+		gtk_target_list_add_text_targets(target_list, 0);
+		targets = gtk_target_table_new_from_list(target_list,
+							 &n_targets);
+		gtk_tree_view_enable_model_drag_dest(GTK_TREE_VIEW(priv->home_folder_tree),
+						     targets,
+						     n_targets,
+						     GDK_ACTION_MOVE |
+						     GDK_ACTION_COPY |
+						     GDK_ACTION_ASK);
+		mtpc_home_folder_tree_enable_drag_source(MTPC_HOME_FOLDER_TREE(priv->home_folder_tree),
+							 GDK_BUTTON1_MASK,
+							 targets,
+							 n_targets,
+							 GDK_ACTION_MOVE |
+							 GDK_ACTION_COPY);
+
+		g_signal_connect(priv->home_folder_tree,
+				 "drag-data-received",
+				 G_CALLBACK(folder_tree_drag_data_received_cb),
+				 win);
+		g_signal_connect(priv->home_folder_tree,
+				 "drag-data-get",
+				 G_CALLBACK(folder_tree_drag_data_get_cb),
+				 win);
+
+		gtk_target_list_unref(target_list);
+		gtk_target_table_free(targets, n_targets);
+	}
 
 	g_signal_connect(priv->home_folder_tree,
 			 "folder_popup",
