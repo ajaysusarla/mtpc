@@ -483,22 +483,26 @@ static GtkWidget *_mtpc_window_create_toolbar()
 	GtkWidget *toolbar;
 	GtkToolItem *button;
 
-	toolbar = gtk_toolbar_new ();
-	button = gtk_tool_button_new (NULL, NULL);
-	gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (button), "gtk-refresh");
-	gtk_actionable_set_detailed_action_name (GTK_ACTIONABLE (button), "win.refresh-device-list");
-	gtk_container_add (GTK_CONTAINER (toolbar), GTK_WIDGET (button));
+	toolbar = gtk_toolbar_new();
+	button = gtk_tool_button_new(NULL, NULL);
+	gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "gtk-refresh");
+	gtk_actionable_set_detailed_action_name(GTK_ACTIONABLE(button), "win.refresh-device-list");
+	gtk_container_add(GTK_CONTAINER(toolbar), GTK_WIDGET(button));
 
-	button = gtk_tool_button_new (NULL, NULL);
-	gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (button), "media-eject");
-	gtk_actionable_set_detailed_action_name (GTK_ACTIONABLE (button), "win.disconnect");
-	gtk_container_add (GTK_CONTAINER (toolbar), GTK_WIDGET (button));
+	button = gtk_tool_button_new(NULL, NULL);
+	gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "media-eject");
+	gtk_actionable_set_detailed_action_name(GTK_ACTIONABLE(button),
+						"win.disconnect");
+	gtk_container_add(GTK_CONTAINER(toolbar), GTK_WIDGET(button));
 
-	button = gtk_toggle_tool_button_new ();
-	gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (button), "gtk-properties");
-	gtk_actionable_set_detailed_action_name (GTK_ACTIONABLE (button), "win.toggle-device-properties");
-	gtk_container_add (GTK_CONTAINER (toolbar), GTK_WIDGET (button));
+	button = gtk_toggle_tool_button_new();
+	gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button),
+				      "gtk-properties");
+	gtk_actionable_set_detailed_action_name(GTK_ACTIONABLE(button),
+						"win.toggle-device-properties");
+	gtk_container_add(GTK_CONTAINER(toolbar), GTK_WIDGET(button));
 
+	gtk_widget_show_all(toolbar);
 
 	return toolbar;
 }
@@ -513,8 +517,8 @@ static GActionEntry win_entries[] = {
         { "copy", copy_cb, NULL, NULL, NULL },
         { "paste", paste_cb, NULL, NULL, NULL },
 	/* view */
-        { "toggle-home-folder", toggle_action_activated, NULL, "true", change_home_folder_view_state },
-        { "toggle-device-properties", toggle_action_activated, NULL, "true", change_device_properties_view },
+        { "toggle-home-folder", toggle_action_activated, NULL, "false", change_home_folder_view_state },
+        { "toggle-device-properties", toggle_action_activated, NULL, "false", change_device_properties_view },
         { "toggle-status-bar", toggle_action_activated, NULL, "true", change_statusbar_view_state },
 };
 
@@ -565,25 +569,29 @@ static void mtpc_window_init(MtpcWindow *win)
 
 	/* foundation */
 	priv->grid = gtk_grid_new();
-	gtk_container_add(GTK_CONTAINER (window), priv->grid);
+	gtk_container_add(GTK_CONTAINER(window), priv->grid);
 
 	/* toolbar */
 	priv->toolbar = _mtpc_window_create_toolbar();
-	gtk_grid_attach (GTK_GRID (priv->grid), priv->toolbar, 0, 0, 1, 1);
+	gtk_grid_attach(GTK_GRID (priv->grid), priv->toolbar, 0, 0, 1, 1);
+	gtk_widget_show(GTK_WIDGET(priv->toolbar));
 
 
 	/** main view **/
 	priv->main_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 	gtk_widget_set_hexpand (priv->main_vbox, TRUE);
 	gtk_widget_set_vexpand (priv->main_vbox, TRUE);
+	gtk_widget_show(GTK_WIDGET(priv->main_vbox));
 
         priv->right_container = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
         gtk_box_pack_start(GTK_BOX(priv->main_vbox),
 			   priv->right_container, TRUE, TRUE, 3);
+	gtk_widget_show(GTK_WIDGET(priv->right_container));
 
         priv->left_container = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
         gtk_paned_pack1(GTK_PANED(priv->right_container),
 			priv->left_container, TRUE, TRUE);
+	gtk_widget_show(GTK_WIDGET(priv->left_container));
 
 	/* sidebar */
         priv->sidebar = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
@@ -595,6 +603,8 @@ static void mtpc_window_init(MtpcWindow *win)
                                     GTK_STYLE_CLASS_SIDEBAR);
         gtk_widget_set_size_request (vbox, -1, 50);
         gtk_paned_pack1(GTK_PANED(priv->sidebar), vbox, TRUE, FALSE);
+	gtk_widget_show(GTK_WIDGET(vbox));
+	gtk_widget_show(GTK_WIDGET(priv->sidebar));
 
 	/* device folder tree */
 	priv->device_scrolled = gtk_scrolled_window_new(NULL, NULL);
@@ -603,7 +613,7 @@ static void mtpc_window_init(MtpcWindow *win)
                                        GTK_POLICY_AUTOMATIC);
 	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(priv->device_scrolled),
                                             GTK_SHADOW_IN);
-	gtk_widget_show(priv->device_scrolled);
+	gtk_widget_show(GTK_WIDGET(priv->device_scrolled));
 
 	priv->device_folder_tree = mtpc_device_folder_tree_new();
 	gtk_container_add(GTK_CONTAINER(priv->device_scrolled),
@@ -611,10 +621,11 @@ static void mtpc_window_init(MtpcWindow *win)
 
         gtk_paned_pack2(GTK_PANED(priv->left_container),
 			priv->device_scrolled, FALSE, FALSE);
+	gtk_widget_show(GTK_WIDGET(priv->device_folder_tree));
 
 	/* statusbar */
 	priv->statusbar = mtpc_statusbar_new();
-	gtk_widget_show(priv->statusbar);
+	gtk_widget_show_all(priv->statusbar);
 	gtk_widget_set_vexpand(priv->statusbar, FALSE);
 
 	/*
@@ -648,11 +659,15 @@ static void mtpc_window_init(MtpcWindow *win)
 			 G_CALLBACK(devicelist_device_load_cb),
 			 win);
 
+	gtk_widget_show(GTK_WIDGET(priv->devicelist));
+
 	/* device property box */
 	priv->device_properties_box = gtk_box_new(GTK_ORIENTATION_VERTICAL,0);
         gtk_paned_pack2(GTK_PANED(priv->sidebar),
 			priv->device_properties_box, TRUE, FALSE);
-	gtk_widget_hide(priv->device_properties_box);
+	_mtpc_window_set_device_properties_visibility(priv->device_properties_box,
+						      FALSE);
+
 
 	/* home folder tree */
 	priv->home_scrolled = gtk_scrolled_window_new(NULL, NULL);
@@ -661,11 +676,12 @@ static void mtpc_window_init(MtpcWindow *win)
                                        GTK_POLICY_AUTOMATIC);
 	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(priv->home_scrolled),
                                             GTK_SHADOW_IN);
-	gtk_widget_show(priv->home_scrolled);
 
 	priv->home_folder_tree = mtpc_home_folder_tree_new();
 	gtk_container_add(GTK_CONTAINER(priv->home_scrolled),
 			  priv->home_folder_tree);
+
+	gtk_widget_show(GTK_WIDGET(priv->home_folder_tree));
 
         gtk_paned_pack2(GTK_PANED(priv->right_container),
 			priv->home_scrolled, TRUE, TRUE);
@@ -720,10 +736,13 @@ static void mtpc_window_init(MtpcWindow *win)
 			 win);
 
 	_mtpc_window_setup_home_folder(win, priv->home_folder_tree);
+	_mtpc_window_set_home_folder_visibility(priv->home_scrolled,
+						FALSE);
 
 	/* add the main_vbox to the container */
 	gtk_grid_attach(GTK_GRID(priv->grid), priv->main_vbox, 0, 1, 1, 1);
 	gtk_grid_attach(GTK_GRID(priv->grid), priv->statusbar, 0, 2, 1, 1);
+	gtk_widget_show(GTK_WIDGET(priv->grid));
 }
 
 /* public methods */

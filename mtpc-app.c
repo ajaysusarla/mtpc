@@ -74,7 +74,7 @@ static void new_mtpc_window(GApplication *application)
 
         window = mtpc_window_new(MTPC_APP(application));
 
-        gtk_widget_show_all(GTK_WIDGET(window));
+        gtk_widget_show(GTK_WIDGET(window));
 
         gtk_window_present(GTK_WINDOW(window));
 }
