@@ -43,7 +43,6 @@ enum {
 };
 
 typedef struct {
-	int remove;
 	GtkTreeStore *tree_store;
 	GtkCellRenderer *name_text_renderer;
 	GtkCellRenderer *size_text_renderer;
