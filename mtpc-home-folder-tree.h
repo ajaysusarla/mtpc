@@ -54,7 +54,7 @@ void mtpc_home_folder_tree_set_list(MtpcHomeFolderTree *folder_tree,
 				    const char *current_path,
 				    GFile *parent,
 				    GList *file_list);
-void mpc_home_folder_tree_clear(MtpcHomeFolderTree *folder_tree);
+void mtpc_home_folder_tree_clear(MtpcHomeFolderTree *folder_tree);
 void mtpc_home_folder_tree_enable_drag_source(MtpcHomeFolderTree *folder_tree,
 					      GdkModifierType start_button_mask,
 					      const GtkTargetEntry *targets,
