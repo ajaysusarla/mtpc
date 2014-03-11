@@ -28,6 +28,7 @@
 #include "mtpc-devicelist.h"
 #include "mtpc-statusbar.h"
 #include "mtpc-home-folder-tree.h"
+#include "mtpc-device-folder-tree.h"
 
 typedef struct {
 	GtkWidget *headerbar;
@@ -42,7 +43,9 @@ typedef struct {
 	GtkWidget *home_scrolled;
 	GtkWidget *home_folder_tree;
 
+	GtkWidget *device_scrolled;
 	GtkWidget *device_folder_tree;
+
 	GtkWidget *sidebar;
 	GtkWidget *device_properties_box;
 	GtkWidget *device_properties_grid;
@@ -594,6 +597,20 @@ static void mtpc_window_init(MtpcWindow *win)
         gtk_paned_pack1(GTK_PANED(priv->sidebar), vbox, TRUE, FALSE);
 
 	/* device folder tree */
+	priv->device_scrolled = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(priv->device_scrolled),
+                                       GTK_POLICY_AUTOMATIC,
+                                       GTK_POLICY_AUTOMATIC);
+	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(priv->device_scrolled),
+                                            GTK_SHADOW_IN);
+	gtk_widget_show(priv->device_scrolled);
+
+	priv->device_folder_tree = mtpc_device_folder_tree_new();
+	gtk_container_add(GTK_CONTAINER(priv->device_scrolled),
+			  priv->device_folder_tree);
+
+        gtk_paned_pack2(GTK_PANED(priv->left_container),
+			priv->device_scrolled, FALSE, FALSE);
 
 	/* statusbar */
 	priv->statusbar = mtpc_statusbar_new();
