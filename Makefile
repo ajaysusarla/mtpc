@@ -75,6 +75,7 @@ EXTRA_FLAGS +=	$(GTKCFLAGS) $(GLIB2CFLAGS) $(GTHREADCFLAGS) \
 
 # Object files
 OBJS =  main.o \
+	mtpc-marshal.o \
 	gtk-utils.o \
 	glib-utils.o \
 	gio-utils.o \
@@ -91,6 +92,7 @@ OBJS =  main.o \
 
 # Headers
 HDRS = 	main.h \
+	mtpc-marshal.h \
 	gtk-utils.h \
 	glib-utils.h \
 	gio-utils.h \
