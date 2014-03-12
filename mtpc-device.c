@@ -44,25 +44,15 @@ Device *mtpc_device_new(void)
 Device *mtpc_device_new_from_raw_device(LIBMTP_raw_device_t *rawdevice)
 {
 	Device *device;
-	LIBMTP_devicestorage_t *storage;
 	char *tmp;
 	guint8 max;
 	guint8 cur;
-	int storage_num = 0;
 
 	device = g_new0(Device, 1);
 
 	/* Raw Device */
 	mtpc_debug("raw device uncached\n");
 	device->device = LIBMTP_Open_Raw_Device_Uncached(rawdevice);
-
-	/* update storage */
-	mtpc_debug("storage \n");
-	LIBMTP_Get_Storage(device->device, LIBMTP_STORAGE_SORTBY_NOTSORTED);
-	device->primary_storage = device->device->storage;
-	for (storage = device->device->storage; storage != 0; storage = storage->next)
-		storage_num++;
-	device->storage_count = storage_num;
 
 	/* vid & pid */
 	mtpc_debug("vid and pid\n");
@@ -159,10 +149,6 @@ void mtpc_device_destroy(Device *device)
 
 	g_free(device->filetypes);
 	device->filetypes_len = 0;
-	printf("..");
-
-	device->primary_storage = NULL;
-	device->storage_count = 0;
 	printf("..");
 
 	LIBMTP_Release_Device(device->device);

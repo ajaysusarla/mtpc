@@ -45,10 +45,6 @@ typedef struct {
         guint32 vid;
         guint32 pid;
 
-        LIBMTP_devicestorage_t *primary_storage;
-        gint storageid;
-        gint storage_count;
-
         uint16_t *filetypes;
         uint16_t filetypes_len;
 
