@@ -227,11 +227,27 @@ static void fetch_devices_task_thread_func(GTask *task,
 
 	while (--i >= 0) {
 		Device *device;
+		GtkTreeIter iter;
+		LIBMTP_devicestorage_t *storage;
 
 		device = mtpc_device_new_from_raw_device(&devices->rawdevices[i]);
 		mtpc_devicelist_append_item(MTPC_DEVICELIST(priv->devicelist),
-					    i, NULL,
+					    i, &iter,
 					    device);
+
+		LIBMTP_Get_Storage(device->device,
+				   LIBMTP_STORAGE_SORTBY_NOTSORTED);
+		for (storage = device->device->storage;
+		     storage != 0;
+		     storage = storage->next) {
+			mtpc_devicelist_add_child(MTPC_DEVICELIST(priv->devicelist),
+						  &iter,
+						  storage->id,
+						  storage->StorageType,
+						  storage->StorageDescription,
+						  storage->VolumeIdentifier,
+						  device);
+		}
 	}
 }
 

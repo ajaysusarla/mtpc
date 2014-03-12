@@ -62,6 +62,7 @@ gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
 void mtpc_devicelist_add_child(MtpcDevicelist *device_list,
 			       GtkTreeIter *parent,
 			       int storage_id,
+			       int storage_type,
 			       char *storage_description,
 			       char *volume_id,
 			       Device *device);

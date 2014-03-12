@@ -27,6 +27,14 @@ enum {
 	LAST_SIGNAL
 };
 
+/* PTP Storage types from ptp.h */
+enum {
+	PTP_ST_Undefined = 0x0000,
+	PTP_ST_FixedROM = 0x0001,
+	PTP_ST_RemovableROM = 0x0002,
+	PTP_ST_FixedRAM = 0x0003,
+	PTP_ST_RemovableRAM = 0x0004
+};
 enum {
         COL_DEVICE_INDEX = 0,
         COL_DEVICE_MODEL,
@@ -71,16 +79,14 @@ static void add_columns(MtpcDevicelist *device_list, GtkTreeView *treeview)
 
 
 	renderer = gtk_cell_renderer_pixbuf_new();
-        g_object_set(renderer, "ypad", 0, NULL);
+        g_object_set(renderer, "follow-state", TRUE, NULL);
         gtk_tree_view_column_pack_start(column, renderer, FALSE);
         gtk_tree_view_column_set_attributes(column, renderer,
-					    "pixbuf", COL_DEVICE_ICON,
-					    "pixbuf-eject", COL_DEVICE_EJECT,
-					    "pixbuf-no-eject", COL_DEVICE_EJECT,
+					    "gicon", COL_DEVICE_ICON,
 					    NULL);
 
         renderer = gtk_cell_renderer_text_new();
-        g_object_set(renderer, "ypad", 0, NULL);
+        g_object_set(renderer, "ellipsize", PANGO_ELLIPSIZE_END, NULL);
         gtk_tree_view_column_pack_start(column, renderer, TRUE);
         gtk_tree_view_column_set_attributes(column, renderer,
 					    "text", COL_DEVICE_MODEL,
@@ -421,7 +427,7 @@ static void mtpc_devicelist_init(MtpcDevicelist *device_list)
 					      G_TYPE_STRING,
 					      G_TYPE_STRING,
 					      G_TYPE_POINTER,
-					      GDK_TYPE_PIXBUF,
+					      G_TYPE_ICON,
 					      G_TYPE_BOOLEAN,
 					      G_TYPE_BOOLEAN);
 	gtk_tree_view_set_model(GTK_TREE_VIEW(device_list),
@@ -485,7 +491,7 @@ gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
 				     Device *device)
 {
 	MtpcDevicelistPrivate *priv;
-	GdkPixbuf *pixbuf = NULL;
+	GIcon *icon;
 
         g_return_val_if_fail(device != NULL, FALSE);
         g_return_val_if_fail(device->device != NULL, FALSE);
@@ -493,6 +499,7 @@ gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
 	priv = mtpc_devicelist_get_instance_private(device_list);
 
 	mtpc_device_add(device);
+	icon = g_themed_icon_new("multimedia-player");
 
 	gtk_tree_store_append(priv->tree_store, iter, NULL);
 
@@ -501,7 +508,7 @@ gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
 			   COL_DEVICE_MODEL, device->model,
 			   COL_DEVICE_MFR, device->manufacturer,
 			   COL_DEVICE_ITEM, device,
-			   COL_DEVICE_ICON, pixbuf,
+			   COL_DEVICE_ICON, icon,
 			   COL_DEVICE_EJECT, TRUE,
 			   COL_DEVICE_NO_EJECT, FALSE,
 			   -1);
@@ -512,13 +519,15 @@ gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
 void mtpc_devicelist_add_child(MtpcDevicelist *device_list,
 			       GtkTreeIter *parent,
 			       int storage_id,
+			       int storage_type,
 			       char *storage_description,
 			       char *volume_id,
 			       Device *device)
 {
 	GtkTreeIter child;
 	MtpcDevicelistPrivate *priv;
-	GdkPixbuf *pixbuf = NULL;
+	GIcon *icon;
+
         g_return_val_if_fail(device != NULL, FALSE);
         g_return_val_if_fail(device->device != NULL, FALSE);
 
@@ -526,12 +535,22 @@ void mtpc_devicelist_add_child(MtpcDevicelist *device_list,
 
 	gtk_tree_store_append(priv->tree_store, &child, parent);
 
+	switch (storage_type) {
+	case PTP_ST_RemovableROM:
+	case PTP_ST_RemovableRAM:
+		icon = g_themed_icon_new("media-flash-sd");
+	case PTP_ST_FixedROM:
+	case PTP_ST_FixedRAM:
+		icon = g_themed_icon_new("drive-harddisk");
+
+	}
+
 	gtk_tree_store_set(priv->tree_store, &child,
 			   COL_DEVICE_INDEX, storage_id,
 			   COL_DEVICE_MODEL, storage_description,
 			   COL_DEVICE_MFR, volume_id,
 			   COL_DEVICE_ITEM, device,
-			   COL_DEVICE_ICON, pixbuf,
+			   COL_DEVICE_ICON, icon,
 			   COL_DEVICE_EJECT, TRUE,
 			   COL_DEVICE_NO_EJECT, FALSE,
 			   -1);
