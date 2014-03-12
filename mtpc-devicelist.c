@@ -18,6 +18,12 @@
 #include <string.h>
 #include <gtk/gtk.h>
 #include "mtpc-devicelist.h"
+#include "mtpc-marshal.h"
+
+enum {
+	ENTRY_TYPE_DEVICE,
+	ENTRY_TYPE_STORAGE
+};
 
 enum {
 	FOLDER_POPUP,
@@ -37,12 +43,11 @@ enum {
 };
 enum {
         COL_DEVICE_INDEX = 0,
+	COL_DEVICE_TYPE,
         COL_DEVICE_MODEL,
         COL_DEVICE_MFR,
         COL_DEVICE_ITEM,
         COL_DEVICE_ICON,
-        COL_DEVICE_EJECT,
-        COL_DEVICE_NO_EJECT,
         N_COLS
 };
 
@@ -207,11 +212,14 @@ static gboolean button_release_event_cb(GtkWidget *widget,
 	return FALSE;
 }
 
-static void load_contents_of_device(MtpcDevicelist *devicelist, Device *device)
+static void load_contents_of_device(MtpcDevicelist *devicelist,
+				    int index,
+				    Device *device)
 {
 	g_signal_emit(devicelist,
 		      mtpc_devicelist_signals[LOAD],
 		      0,
+		      index,
 		      device);
 }
 
@@ -223,6 +231,8 @@ static gboolean selection_changed_cb(GtkTreeSelection *selection,
 	GtkTreePath *selected_path;
 	MtpcDevicelistPrivate *priv;
 	Device *device;
+	int entry_type;
+	int index;
 
 	priv = mtpc_devicelist_get_instance_private(devicelist);
 
@@ -235,11 +245,14 @@ static gboolean selection_changed_cb(GtkTreeSelection *selection,
 
 	gtk_tree_model_get(GTK_TREE_MODEL(priv->tree_store),
 			   &iter,
+			   COL_DEVICE_INDEX, &index,
+			   COL_DEVICE_TYPE, &entry_type,
 			   COL_DEVICE_ITEM, &device,
 			   -1);
 
 	/* load the device contents here */
-	load_contents_of_device(devicelist, device);
+	if (entry_type == ENTRY_TYPE_STORAGE)
+		load_contents_of_device(devicelist, index, device);
 
 	gtk_tree_path_free(selected_path);
 
@@ -308,7 +321,7 @@ static void _mtpc_devicelist_add_empty_item(MtpcDevicelist *device_list,
  * mouse pointer.  The problem can be fixed emitting a fake motion notify
  * event, this way the expander gets highlighted again and a click on the
  * expander will correctly collapse the node. */
-static void emit_fake_motino_notify_event(MtpcDevicelist *device_list)
+static void emit_fake_motion_notify_event(MtpcDevicelist *device_list)
 {
 	GtkWidget *widget = GTK_WIDGET(device_list);
 	GdkDevice *device;
@@ -393,9 +406,10 @@ static void mtpc_devicelist_class_init(MtpcDevicelistClass *klass)
 			     G_SIGNAL_RUN_LAST,
 			     G_STRUCT_OFFSET(MtpcDevicelistClass, load),
 			     NULL, NULL,
-			     g_cclosure_marshal_VOID__POINTER,
+			     mtpc_marshal_VOID__INT_POINTER,
 			     G_TYPE_NONE,
-			     1,
+			     2,
+			     G_TYPE_INT,
 			     G_TYPE_POINTER);
 
 	mtpc_devicelist_signals[OPEN] =
@@ -424,12 +438,11 @@ static void mtpc_devicelist_init(MtpcDevicelist *device_list)
 
 	priv->tree_store = gtk_tree_store_new(N_COLS,
 					      G_TYPE_INT,
+					      G_TYPE_INT,
 					      G_TYPE_STRING,
 					      G_TYPE_STRING,
 					      G_TYPE_POINTER,
-					      G_TYPE_ICON,
-					      G_TYPE_BOOLEAN,
-					      G_TYPE_BOOLEAN);
+					      G_TYPE_ICON);
 	gtk_tree_view_set_model(GTK_TREE_VIEW(device_list),
 				GTK_TREE_MODEL(priv->tree_store));
 
@@ -505,12 +518,11 @@ gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
 
 	gtk_tree_store_set(priv->tree_store, iter,
 			   COL_DEVICE_INDEX, index,
+			   COL_DEVICE_TYPE, ENTRY_TYPE_DEVICE,
 			   COL_DEVICE_MODEL, device->model,
 			   COL_DEVICE_MFR, device->manufacturer,
 			   COL_DEVICE_ITEM, device,
 			   COL_DEVICE_ICON, icon,
-			   COL_DEVICE_EJECT, TRUE,
-			   COL_DEVICE_NO_EJECT, FALSE,
 			   -1);
 
 	return TRUE;
@@ -547,12 +559,11 @@ void mtpc_devicelist_add_child(MtpcDevicelist *device_list,
 
 	gtk_tree_store_set(priv->tree_store, &child,
 			   COL_DEVICE_INDEX, storage_id,
+			   COL_DEVICE_TYPE, ENTRY_TYPE_STORAGE,
 			   COL_DEVICE_MODEL, storage_description,
 			   COL_DEVICE_MFR, volume_id,
 			   COL_DEVICE_ITEM, device,
 			   COL_DEVICE_ICON, icon,
-			   COL_DEVICE_EJECT, TRUE,
-			   COL_DEVICE_NO_EJECT, FALSE,
 			   -1);
 
 	return;
