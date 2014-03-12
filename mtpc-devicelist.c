@@ -21,6 +21,7 @@
 
 enum {
 	FOLDER_POPUP,
+	LIST_CHILDREN,
 	LOAD,
 	OPEN,
 	LAST_SIGNAL
@@ -39,6 +40,8 @@ enum {
 
 
 typedef struct {
+	GHashTable *entry_points;
+
 	GtkTreeStore *tree_store;
 	GtkCellRenderer *text_renderer;
 	GtkTreePath *hover_path;
@@ -271,9 +274,80 @@ static gboolean row_activated_cb(GtkTreeView *tree_view,
 	return TRUE;
 }
 
+static gboolean row_expanded_cb(GtkTreeView  *tree_view,
+				GtkTreeIter  *expanded_iter,
+				GtkTreePath  *expanded_path,
+				gpointer      user_data)
+{
+	return FALSE;
+}
+
+static gboolean row_collapsed_cb(GtkTreeView *tree_view,
+				 GtkTreeIter *iter,
+				 GtkTreePath *path,
+				 gpointer     user_data)
+{
+	return FALSE;
+}
+
+static void _mtpc_devicelist_add_empty_item(MtpcDevicelist *device_list,
+					    GtkTreeIter *parent,
+					    gboolean forced)
+{
+}
+
+/* From gthumb: */
+/* After changing the children list, the node expander is not highlighted
+ * anymore, this prevents the user to close the expander without moving the
+ * mouse pointer.  The problem can be fixed emitting a fake motion notify
+ * event, this way the expander gets highlighted again and a click on the
+ * expander will correctly collapse the node. */
+static void emit_fake_motino_notify_event(MtpcDevicelist *device_list)
+{
+	GtkWidget *widget = GTK_WIDGET(device_list);
+	GdkDevice *device;
+	GdkWindow *window;
+	GdkEventMotion event;
+	int x, y;
+
+	if (!gtk_widget_get_realized(widget))
+		return;
+
+	device = gdk_device_manager_get_client_pointer(
+		gdk_display_get_device_manager(
+			gtk_widget_get_display(GTK_WIDGET(device_list))));
+
+	window = gdk_window_get_device_position(gtk_widget_get_window(widget),
+						device,
+						&x,
+						&y,
+						NULL);
+
+	event.type = GDK_MOTION_NOTIFY;
+	event.window = (window != NULL) ? window : gtk_tree_view_get_bin_window(GTK_TREE_VIEW(device_list));
+	event.send_event = TRUE;
+	event.time = GDK_CURRENT_TIME;
+	event.x = x;
+	event.y = y;
+	event.axes = NULL;
+	event.state = 0;
+	event.is_hint = FALSE;
+	event.device = device;
+
+	GTK_WIDGET_GET_CLASS(device_list)->motion_notify_event(widget, &event);
+}
+
 /* class implementation */
 static void mtpc_devicelist_finalize(GObject *object)
 {
+	MtpcDevicelist *device_list = MTPC_DEVICELIST(object);
+	MtpcDevicelistPrivate *priv;
+
+	priv = mtpc_devicelist_get_instance_private(device_list);
+
+
+	g_hash_table_unref(priv->entry_points);
+
 	G_OBJECT_CLASS(mtpc_devicelist_parent_class)->finalize(object);
 }
 
@@ -290,6 +364,17 @@ static void mtpc_devicelist_class_init(MtpcDevicelistClass *klass)
 			     G_TYPE_FROM_CLASS(klass),
 			     G_SIGNAL_RUN_LAST,
 			     G_STRUCT_OFFSET(MtpcDevicelistClass, folder_popup),
+			     NULL, NULL,
+			     g_cclosure_marshal_VOID__POINTER,
+			     G_TYPE_NONE,
+			     1,
+			     G_TYPE_POINTER);
+
+	mtpc_devicelist_signals[LIST_CHILDREN] =
+		g_signal_new("list_children",
+			     G_TYPE_FROM_CLASS(klass),
+			     G_SIGNAL_RUN_LAST,
+			     G_STRUCT_OFFSET(MtpcDevicelistClass, list_children),
 			     NULL, NULL,
 			     g_cclosure_marshal_VOID__POINTER,
 			     G_TYPE_NONE,
@@ -325,6 +410,11 @@ static void mtpc_devicelist_init(MtpcDevicelist *device_list)
 	MtpcDevicelistPrivate *priv;
 
 	priv = mtpc_devicelist_get_instance_private(device_list);
+
+	priv->entry_points = g_hash_table_new_full(g_file_hash,
+						   (GEqualFunc)g_file_equal,
+						   g_object_unref,
+						   NULL);
 
 	priv->tree_store = gtk_tree_store_new(N_COLS,
 					      G_TYPE_INT,
@@ -369,6 +459,14 @@ static void mtpc_devicelist_init(MtpcDevicelist *device_list)
 			 "row-activated",
 			 G_CALLBACK(row_activated_cb),
 			 device_list);
+	g_signal_connect(device_list,
+			 "row-expanded",
+			 G_CALLBACK(row_expanded_cb),
+			 device_list);
+	g_signal_connect(device_list,
+			 "row-collapsed",
+			 G_CALLBACK(row_collapsed_cb),
+			 device_list);
 }
 
 /* public functions */
@@ -386,7 +484,6 @@ gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
 				     GtkTreeIter *iter,
 				     Device *device)
 {
-	GtkTreeIter child;
 	MtpcDevicelistPrivate *priv;
 	GdkPixbuf *pixbuf = NULL;
 
@@ -397,9 +494,9 @@ gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
 
 	mtpc_device_add(device);
 
-	gtk_tree_store_append(priv->tree_store, &child, NULL);
+	gtk_tree_store_append(priv->tree_store, iter, NULL);
 
-	gtk_tree_store_set(priv->tree_store, &child,
+	gtk_tree_store_set(priv->tree_store, iter,
 			   COL_DEVICE_INDEX, index,
 			   COL_DEVICE_MODEL, device->model,
 			   COL_DEVICE_MFR, device->manufacturer,
@@ -410,6 +507,36 @@ gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
 			   -1);
 
 	return TRUE;
+}
+
+void mtpc_devicelist_add_child(MtpcDevicelist *device_list,
+			       GtkTreeIter *parent,
+			       int storage_id,
+			       char *storage_description,
+			       char *volume_id,
+			       Device *device)
+{
+	GtkTreeIter child;
+	MtpcDevicelistPrivate *priv;
+	GdkPixbuf *pixbuf = NULL;
+        g_return_val_if_fail(device != NULL, FALSE);
+        g_return_val_if_fail(device->device != NULL, FALSE);
+
+	priv = mtpc_devicelist_get_instance_private(device_list);
+
+	gtk_tree_store_append(priv->tree_store, &child, parent);
+
+	gtk_tree_store_set(priv->tree_store, &child,
+			   COL_DEVICE_INDEX, storage_id,
+			   COL_DEVICE_MODEL, storage_description,
+			   COL_DEVICE_MFR, volume_id,
+			   COL_DEVICE_ITEM, device,
+			   COL_DEVICE_ICON, pixbuf,
+			   COL_DEVICE_EJECT, TRUE,
+			   COL_DEVICE_NO_EJECT, FALSE,
+			   -1);
+
+	return;
 }
 
 void mtpc_devicelist_clear(MtpcDevicelist *device_list)

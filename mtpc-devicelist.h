@@ -43,6 +43,9 @@ struct _MtpcDevicelistClass {
 	void (*folder_popup) (MtpcDevicelist *device_list,
 			      Device *device);
 
+	void (*list_children) (MtpcDevicelist *device_list,
+			       Device *device);
+
 	void (*load) (MtpcDevicelist *device_list,
 		      Device *device);
 
@@ -56,5 +59,11 @@ gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
 				     int index,
 				     GtkTreeIter *iter,
 				     Device *device);
+void mtpc_devicelist_add_child(MtpcDevicelist *device_list,
+			       GtkTreeIter *parent,
+			       int storage_id,
+			       char *storage_description,
+			       char *volume_id,
+			       Device *device);
 void mtpc_devicelist_clear(MtpcDevicelist *device_list);
 #endif /* MTPC_DEVICELIST_H */
