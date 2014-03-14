@@ -55,6 +55,16 @@ else ifeq ($(UNAME), darwin)
 	OSSUPPORT_CFLAGS += -DDARWIN
 endif
 
+# Check Versions
+LIBMTP_REQ = 1.1.5
+GLIB_REQ = 2.38.0
+GTK_REQ = 3.10.0
+GTHREAD_REQ = 2.38.0
+LIBMTP_VERSION = $(shell $(PKGCONFIG) --modversion libmtp)
+GLIB_VERSION = $(shell $(PKGCONFIG) --modversion glib-2.0)
+GTK_VERSION = $(shell $(PKGCONFIG) --modversion gtk+-3.0)
+GTHREAD_VERSION = $(shell $(PKGCONFIG) --modversion gthread-2.0)
+
 # Dependencies
 LIBMTP = $(shell $(PKGCONFIG) --libs libmtp)
 LIBGTK = $(shell $(PKGCONFIG) --libs gtk+-3.0 glib-2.0)
@@ -109,6 +119,8 @@ HDRS = 	main.h \
 
 DEPS = $(wildcard .dep/*.dep)
 
+all: $(PROGRAM)
+
 $(PROGRAM): $(OBJS) $(HDRS)
 	$(E) '             LD' $@
 	$(Q)$(CC) $(LDFLAGS) -o $(PROGRAM) $(OBJS) $(LIBS)
@@ -120,12 +132,12 @@ $(PROGRAM): $(OBJS) $(HDRS)
 
 mtpc-marshal.o: mtpc-marshal.c mtpc-marshal.h
 
-mtpc-marshal.h:
-	$(E) 'GLIB_GENMARSHAL' $<
+mtpc-marshal.h: mtpc-marshal.list
+	$(E) '             GENMARSHAL' $<
 	$(Q)$(GLIB_GENMARSHAL) mtpc-marshal.list --header --prefix=mtpc_marshal > $@
 
-mtpc-marshal.c:
-	$(E) 'GLIB_GENMARSHAL' $<
+mtpc-marshal.c: mtpc-marshal.list
+	$(E) '             GENMARSHAL' $<
 	$(E) "#include \"mtpc-marshal.h\"" > $@
 	$(Q)$(GLIB_GENMARSHAL) mtpc-marshal.list --body --prefix=mtpc_marshal >> $@
 
@@ -134,5 +146,11 @@ clean:
 	$(Q)rm -f $(OBJS) *~ $(PROGRAM) po/*~
 	$(Q)rm -rf share .dep
 	$(Q)rm -rf mtpc-marshal.h mtpc-marshal.c
+
+check:
+	$(E) 'Found libmtp version  : $(LIBMTP_VERSION), Required >= $(LIBMTP_REQ)'
+	$(E) 'Found gtk version     : $(GTK_VERSION), Required >= $(GTK_REQ)'
+	$(E) 'Found glib version    : $(GLIB_VERSION), Required >= $(GLIB_REQ)'
+	$(E) 'Found gthread version : $(GTHREAD_VERSION), Required >= $(GTHREAD_REQ)'
 
 -include $(DEPS)
