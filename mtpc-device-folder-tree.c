@@ -33,7 +33,7 @@ enum {
 	COLUMN_ICON,
 	COLUMN_NAME,
 	COLUMN_SIZE,
-	COLUMN_GFILE,
+	COLUMN_GINFO,
 	NUM_COLUMNS
 };
 
@@ -62,6 +62,200 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcDeviceFolderTree,
 			   GTK_TYPE_TREE_VIEW);
 
 /* internal and callbacks */
+static gboolean selection_changed_cb(GtkTreeSelection *selection,
+				     gpointer user_data)
+{
+	printf("selection_changed_cb\n");
+	return FALSE;
+}
+
+static gboolean popup_menu_cb(GtkWidget *widget, gpointer user_data)
+{
+	MtpcDeviceFolderTree *folder_tree = MTPC_DEVICE_FOLDER_TREE(user_data);
+	MtpcDeviceFolderTreePrivate *priv;
+	GtkTreeStore *tree_store;
+	GtkTreeIter iter;
+	GFileInfo *ginfo;
+
+	priv = mtpc_device_folder_tree_get_instance_private(folder_tree);
+	tree_store = priv->tree_store;
+
+	if (gtk_tree_selection_get_selected(gtk_tree_view_get_selection(GTK_TREE_VIEW(folder_tree)), NULL, &iter)) {
+
+			gtk_tree_model_get(GTK_TREE_MODEL(tree_store),
+					   &iter,
+					   COLUMN_GINFO, &ginfo,
+					   -1);
+
+			if (!ginfo)
+				return FALSE;
+	}
+
+	g_signal_emit(folder_tree,
+		      mtpc_device_folder_tree_signals[FOLDER_POPUP],
+		      0,
+		      ginfo);
+
+
+	return TRUE;
+}
+
+static gboolean button_press_cb(GtkWidget *widget,
+			       GdkEventButton *event,
+			       gpointer user_data)
+{
+	MtpcDeviceFolderTree *folder_tree = MTPC_DEVICE_FOLDER_TREE(user_data);
+	MtpcDeviceFolderTreePrivate *priv;
+	GtkTreePath *path;
+	GtkTreeIter iter;
+	gboolean retval = FALSE;
+	GtkTreeViewColumn *column;
+	int cell_x, cell_y;
+
+	priv = mtpc_device_folder_tree_get_instance_private(folder_tree);
+
+	gtk_widget_grab_focus(widget);
+
+	if ((event->state & GDK_SHIFT_MASK) || (event->state & GDK_CONTROL_MASK))
+		return retval;
+
+	if ((event->button != 1) && (event->button != 3))
+		return retval;
+
+	if (!gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(folder_tree),
+					   event->x, event->y,
+					   &path,
+					   &column,
+					   &cell_x,
+					   &cell_y))
+	{
+		if (event->button == 3) {
+			g_signal_emit(folder_tree,
+				      mtpc_device_folder_tree_signals[FOLDER_POPUP],
+				      0,
+				      NULL);
+			retval = TRUE;
+		}
+
+		return retval;
+	}
+
+	if (!gtk_tree_model_get_iter(GTK_TREE_MODEL(priv->tree_store),
+				    &iter,
+				    path))
+	{
+		gtk_tree_path_free(path);
+		return retval;
+	}
+
+	if (event->button == 3) {
+		GFileInfo *ginfo;
+
+		gtk_tree_model_get(GTK_TREE_MODEL(priv->tree_store),
+				   &iter,
+				   COLUMN_GINFO, &ginfo,
+				   -1);
+
+		if (ginfo) {
+			g_signal_emit(folder_tree,
+				      mtpc_device_folder_tree_signals[FOLDER_POPUP],
+				      0,
+				      ginfo);
+
+			retval = TRUE;
+		}
+	} else if ((event->button == 1) && (event->type == GDK_BUTTON_PRESS)) {
+		/* possible start of dragging */
+		if (!(event->state & GDK_CONTROL_MASK)
+		    && !(event->state & GDK_SHIFT_MASK)
+		    && priv->drag_source_enabled) {
+			printf("...dragging..\n");
+			priv->dragging = TRUE;
+			priv->drag_start_x = event->x;
+			priv->drag_start_y = event->y;
+		}
+	} else if ((event->button == 1) && (event->type == GDK_2BUTTON_PRESS)) {
+	}
+
+	gtk_tree_path_free(path);
+
+	return retval;
+}
+
+static gboolean button_release_event_cb(GtkWidget *widget,
+					GdkEventButton *event,
+					gpointer user_data)
+{
+	MtpcDeviceFolderTree *folder_tree = MTPC_DEVICE_FOLDER_TREE(user_data);
+	MtpcDeviceFolderTreePrivate *priv;
+
+	priv = mtpc_device_folder_tree_get_instance_private(folder_tree);
+
+	if (priv->dragging) {
+		priv->dragging = FALSE;
+		priv->drag_started = FALSE;
+	}
+
+	return FALSE;
+}
+
+static void open_folder(MtpcDeviceFolderTree *folder_tree, GFileInfo *ginfo)
+{
+	g_signal_emit(folder_tree,
+		      mtpc_device_folder_tree_signals[OPEN],
+		      0, ginfo);
+}
+
+static gboolean row_activated_cb(GtkTreeView *tree_view,
+				 GtkTreePath *path,
+				 GtkTreeViewColumn *column,
+				 gpointer user_data)
+{
+
+	MtpcDeviceFolderTree *folder_tree = MTPC_DEVICE_FOLDER_TREE(user_data);
+	MtpcDeviceFolderTreePrivate *priv;
+	GtkTreeIter iter;
+	GFileInfo *ginfo;
+
+
+	priv = mtpc_device_folder_tree_get_instance_private(folder_tree);
+
+	if(!gtk_tree_model_get_iter(GTK_TREE_MODEL(priv->tree_store),
+				    &iter,
+				    path))
+	{
+		return FALSE;
+	}
+
+	gtk_tree_model_get(GTK_TREE_MODEL(priv->tree_store),
+			   &iter,
+			   COLUMN_GINFO, &ginfo,
+			   -1);
+
+	open_folder(folder_tree, ginfo);
+	return TRUE;
+}
+
+static gboolean motion_notify_event_cb(GtkWidget      *widget,
+				       GdkEventButton *event,
+				       gpointer        user_data)
+{
+	MtpcDeviceFolderTree *folder_tree = MTPC_DEVICE_FOLDER_TREE(user_data);
+	MtpcDeviceFolderTreePrivate *priv;
+
+	priv = mtpc_device_folder_tree_get_instance_private(folder_tree);
+
+	if (!priv->drag_source_enabled)
+		return FALSE;
+
+	printf("device-folder-tree:motion_notify_event_cb\n");
+
+	if (priv->dragging) {
+	}
+
+	return FALSE;
+}
+
 static void add_columns(MtpcDeviceFolderTree *folder_tree,
 			GtkTreeView *treeview)
 {
@@ -217,6 +411,31 @@ static void mtpc_device_folder_tree_init(MtpcDeviceFolderTree *folder_tree)
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(folder_tree));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
+	/* signal handlers */
+	g_signal_connect(selection, "changed",
+			 G_CALLBACK(selection_changed_cb),
+			 folder_tree);
+	g_signal_connect(folder_tree,
+			 "popup-menu",
+			 G_CALLBACK(popup_menu_cb),
+			 folder_tree);
+	g_signal_connect(folder_tree,
+			 "button-press-event",
+			 G_CALLBACK(button_press_cb),
+			 folder_tree);
+	g_signal_connect(folder_tree,
+			 "button-release-event",
+			 G_CALLBACK(button_release_event_cb),
+			 folder_tree);
+	g_signal_connect(folder_tree,
+			 "row-activated",
+			 G_CALLBACK(row_activated_cb),
+			 folder_tree);
+	g_signal_connect(folder_tree,
+			 "motion-notify-event",
+			 G_CALLBACK(motion_notify_event_cb),
+			 folder_tree);
+
 }
 
 /* public functions */
@@ -227,4 +446,69 @@ GtkWidget *mtpc_device_folder_tree_new(void)
 	folder_tree = g_object_new(MTPC_TYPE_DEVICE_FOLDER_TREE, NULL);
 
 	return GTK_WIDGET(folder_tree);
+}
+
+void mtpc_device_folder_tree_set_list(MtpcDeviceFolderTree *folder_tree,
+				      long parent_id,
+				      GList *file_list)
+{
+	MtpcDeviceFolderTreePrivate *priv;
+	GList *l;
+
+	l = file_list;
+	priv = mtpc_device_folder_tree_get_instance_private(folder_tree);
+
+	gtk_tree_store_clear(priv->tree_store);
+/*
+	if (parent_id != -1) {
+		GtkTreeIter iter;
+		GIcon *icon;
+
+		icon = g_themed_icon_new("folder");
+
+		gtk_tree_store_append(priv->tree_store, &iter, NULL);
+
+		gtk_tree_store_set(priv->tree_store, &iter,
+				   COLUMN_TYPE, G_FILE_TYPE_DIRECTORY,
+				   COLUMN_ICON, icon,
+				   COLUMN_NAME, "../",
+				   COLUMN_SIZE, "",
+				   COLUMN_GINFO, &parent_id,
+				   -1);
+
+
+		_g_object_unref(icon);
+	}
+*/
+
+
+	while(l) {
+		GFileInfo *info = l->data;
+		GtkTreeIter iter;
+		GIcon *icon;
+		const char *name;
+		char size[20];
+		GFileType ftype;
+		GError *error;
+
+		name = g_file_info_get_name(info);
+
+		sprintf(size, "%dKB", (int)g_file_info_get_size(info)/1024);
+		ftype = g_file_info_get_file_type(info);
+
+		icon = g_file_info_get_icon(info);
+
+		gtk_tree_store_append(priv->tree_store, &iter, NULL);
+
+		gtk_tree_store_set(priv->tree_store, &iter,
+				   COLUMN_TYPE, ftype,
+				   COLUMN_ICON, icon,
+				   COLUMN_NAME, name,
+				   COLUMN_SIZE, size,
+				   COLUMN_GINFO, info,
+				   -1);
+
+		l = l->next;
+	}
+
 }

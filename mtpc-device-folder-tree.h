@@ -50,5 +50,8 @@ struct _MtpcDeviceFolderTreeClass {
 
 GType mtpc_device_folder_tree_get_type(void);
 GtkWidget *mtpc_device_folder_tree_new(void);
+void mtpc_device_folder_tree_set_list(MtpcDeviceFolderTree *folder_tree,
+				      long parent_id,
+				      GList *file_list);
 
 #endif /* MTPC_DEVICE_FOLDER_TREE_H */
