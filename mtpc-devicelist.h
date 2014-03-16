@@ -30,6 +30,11 @@
 #define MTPC_IS_DEVICELIST_CLASS(klass)   (G_TYPE_CHECK_CLASS_TYPE((klass), MTPC_TYPE_DEVICELIST))
 #define MTPC_DEVICELIST_GET_CLASS(obj)    (G_TYPE_INSTANCE_GET_CLASS((obj), MTPC_TYPE_DEVICELIST, MtpcDevicelistClass))
 
+typedef enum {
+	DEVICELIST_ENTRY_TYPE_DEVICE,
+	DEVICELIST_ENTRY_TYPE_STORAGE
+} MtpcDevicelistEntryType;
+
 typedef struct _MtpcDevicelist MtpcDevicelist;
 typedef struct _MtpcDevicelistClass MtpcDevicelistClass;
 

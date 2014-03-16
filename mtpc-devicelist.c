@@ -21,11 +21,6 @@
 #include "mtpc-marshal.h"
 
 enum {
-	ENTRY_TYPE_DEVICE,
-	ENTRY_TYPE_STORAGE
-};
-
-enum {
 	FOLDER_POPUP,
 	LIST_CHILDREN,
 	LOAD,
@@ -231,7 +226,7 @@ static gboolean selection_changed_cb(GtkTreeSelection *selection,
 	GtkTreePath *selected_path;
 	MtpcDevicelistPrivate *priv;
 	Device *device;
-	int entry_type;
+	MtpcDevicelistEntryType entry_type;
 	int index;
 
 	priv = mtpc_devicelist_get_instance_private(devicelist);
@@ -251,7 +246,7 @@ static gboolean selection_changed_cb(GtkTreeSelection *selection,
 			   -1);
 
 	/* load the device contents here */
-	if (entry_type == ENTRY_TYPE_STORAGE)
+	if (entry_type == DEVICELIST_ENTRY_TYPE_STORAGE)
 		load_contents_of_device(devicelist, index, device);
 
 	gtk_tree_path_free(selected_path);
@@ -518,7 +513,7 @@ gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
 
 	gtk_tree_store_set(priv->tree_store, iter,
 			   COL_DEVICE_INDEX, index,
-			   COL_DEVICE_TYPE, ENTRY_TYPE_DEVICE,
+			   COL_DEVICE_TYPE, DEVICELIST_ENTRY_TYPE_DEVICE,
 			   COL_DEVICE_MODEL, device->model,
 			   COL_DEVICE_MFR, device->manufacturer,
 			   COL_DEVICE_ITEM, device,
@@ -559,7 +554,7 @@ void mtpc_devicelist_add_child(MtpcDevicelist *device_list,
 
 	gtk_tree_store_set(priv->tree_store, &child,
 			   COL_DEVICE_INDEX, storage_id,
-			   COL_DEVICE_TYPE, ENTRY_TYPE_STORAGE,
+			   COL_DEVICE_TYPE, DEVICELIST_ENTRY_TYPE_STORAGE,
 			   COL_DEVICE_MODEL, storage_description,
 			   COL_DEVICE_MFR, volume_id,
 			   COL_DEVICE_ITEM, device,
