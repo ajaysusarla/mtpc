@@ -22,10 +22,9 @@
 #include <gdk/gdk.h>
 
 #include "mtpc-device.h"
+#include "glib-utils.h"
 
 #define mtpc_debug(x)
-
-static GList *device_list = NULL;
 
 /* Callbacks */
 
@@ -66,7 +65,7 @@ Device *mtpc_device_new_from_raw_device(LIBMTP_raw_device_t *rawdevice)
 		device->devname = g_strdup("-");
 	else {
 		device->devname = g_strdup(tmp);
-		g_free(tmp);
+		_g_free(tmp);
 		tmp = NULL;
 	}
 
@@ -77,7 +76,7 @@ Device *mtpc_device_new_from_raw_device(LIBMTP_raw_device_t *rawdevice)
 		device->model = g_strdup("-");
 	else {
 		device->model = g_strdup(tmp);
-		g_free(tmp);
+		_g_free(tmp);
 		tmp = NULL;
 	}
 
@@ -88,7 +87,7 @@ Device *mtpc_device_new_from_raw_device(LIBMTP_raw_device_t *rawdevice)
 		device->manufacturer = g_strdup("-");
 	else {
 		device->manufacturer = g_strdup(tmp);
-		g_free (tmp);
+		_g_free(tmp);
 		tmp = NULL;
 	}
 
@@ -99,7 +98,7 @@ Device *mtpc_device_new_from_raw_device(LIBMTP_raw_device_t *rawdevice)
 		device->serialnum = g_strdup("-");
 	else {
 		device->serialnum = g_strdup(tmp);
-		g_free(tmp);
+		_g_free(tmp);
 		tmp = NULL;
 	}
 
@@ -134,24 +133,25 @@ Device *mtpc_device_new_from_raw_device(LIBMTP_raw_device_t *rawdevice)
 void mtpc_device_destroy(Device *device)
 {
 	printf("device_destroy...");
+
 	g_return_if_fail(device != NULL);
 
+	printf("..");
+	_g_free(device->devname);
+	printf("..");
+	_g_free(device->model);
+	printf("..");
+	_g_free(device->manufacturer);
+	printf("..");
+	_g_free(device->serialnum);
+	printf("..");
 
-	printf("..");
-	g_free(device->devname);
-	printf("..");
-	g_free(device->model);
-	printf("..");
-	g_free(device->manufacturer);
-	printf("..");
-	g_free(device->serialnum);
-	printf("..");
-
-	g_free(device->filetypes);
+	_g_free(device->filetypes);
 	device->filetypes_len = 0;
 	printf("..");
 
 	LIBMTP_Release_Device(device->device);
+	device->device = NULL;
 	printf("..");
 
 	device->opened = FALSE;
@@ -160,23 +160,8 @@ void mtpc_device_destroy(Device *device)
 	device->connected = FALSE;
 	printf("..");
 
-	device_list = g_list_remove(device_list, device);
-	printf("..");
-
-	g_free(device);
+	_g_free(device);
 	printf("..\n");
-}
-
-void mtpc_device_add(Device *device)
-{
-	g_return_if_fail(device != NULL);
-
-	device_list = g_list_insert(device_list, device, -1);
-}
-
-GList *mtpc_device_get_list(void)
-{
-	return device_list;
 }
 
 /* libmtp wrappers */

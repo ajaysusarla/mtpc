@@ -506,7 +506,6 @@ gboolean mtpc_devicelist_append_item(MtpcDevicelist *device_list,
 
 	priv = mtpc_devicelist_get_instance_private(device_list);
 
-	mtpc_device_add(device);
 	icon = g_themed_icon_new("multimedia-player");
 
 	gtk_tree_store_append(priv->tree_store, iter, NULL);
@@ -570,9 +569,6 @@ void mtpc_devicelist_clear(MtpcDevicelist *device_list)
         GList *cur;
 
 	priv = mtpc_devicelist_get_instance_private(device_list);
-
-        for (cur = mtpc_device_get_list(); cur != NULL; cur = cur->next)
-                mtpc_device_destroy((Device *)cur->data);
 
         while (gtk_events_pending())
                 gtk_main_iteration();

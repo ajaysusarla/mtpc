@@ -63,9 +63,6 @@ typedef struct {
 Device *mtpc_device_new(void);
 void mtpc_device_destroy(Device *device);
 Device *mtpc_device_new_from_raw_device(LIBMTP_raw_device_t *device);
-void mtpc_device_add(Device *device);
-GList *mtpc_device_get_list(void);
-
 
 /* libmtp wrapper functions */
 void mtpc_device_libmtp_init (void);

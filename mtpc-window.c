@@ -53,6 +53,8 @@ typedef struct {
 
 	GtkWidget *devicelist;
 
+	GList *dlist;
+
 	GCancellable *cancellable;
 
 } MtpcWindowPrivate;
@@ -62,6 +64,27 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcWindow, mtpc_window, GTK_TYPE_APPLICATION_WINDOW)
 
 
 /* callbacks and internal methods */
+void _mtpc_window_device_add(MtpcWindow *window, Device *device)
+{
+	MtpcWindowPrivate *priv;
+
+	g_return_if_fail(device != NULL);
+
+	priv = mtpc_window_get_instance_private(window);
+
+	priv->dlist = g_list_prepend(priv->dlist, device);
+}
+
+void _mtpc_window_devicelist_free(MtpcWindow *window)
+{
+	MtpcWindowPrivate *priv;
+	priv = mtpc_window_get_instance_private(window);
+
+	g_list_foreach(priv->dlist, (GFunc)mtpc_device_destroy, NULL);
+	g_list_free(priv->dlist);
+	priv->dlist = NULL;
+}
+
 static gboolean update_statusbar(gpointer data)
 {
 	MtpcStatusbar *statusbar = MTPC_STATUSBAR(data);
@@ -235,6 +258,8 @@ static void fetch_devices_task_thread_func(GTask *task,
 					    i, &iter,
 					    device);
 
+		_mtpc_window_device_add(window, device);
+
 		LIBMTP_Get_Storage(device->device,
 				   LIBMTP_STORAGE_SORTBY_NOTSORTED);
 		for (storage = device->device->storage;
@@ -258,6 +283,7 @@ static void fetch_devices_async(MtpcWindow *window)
 	GTask *fetch_devices_task;
 	MtpcWindowPrivate *priv;
 	MtpcStatusbar *statusbar;
+	GList *t;
 
 	data = g_slice_new0(DeviceAsyncFetchData);
 
@@ -265,6 +291,7 @@ static void fetch_devices_async(MtpcWindow *window)
 	statusbar = MTPC_STATUSBAR(priv->statusbar);
 
 	mtpc_devicelist_clear(MTPC_DEVICELIST(priv->devicelist));
+	 _mtpc_window_devicelist_free(window);
 
 	data->window = window;
 	data->devices = mtpc_device_alloc_devices();
@@ -568,6 +595,9 @@ static void mtpc_window_init(MtpcWindow *win)
 	MtpcWindowPrivate *priv;
 
 	priv = mtpc_window_get_instance_private(win);
+
+	/* */
+	priv->dlist = NULL;
 
 	window = GTK_WIDGET(win);
 
