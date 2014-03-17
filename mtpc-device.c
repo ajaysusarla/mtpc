@@ -35,6 +35,8 @@ Device *mtpc_device_new(void)
 {
 	Device *device;
 
+	mtpc_debug("mtpc_device_new\n");
+
 	device = g_new0(Device, 1);
 
 	return device;
@@ -47,6 +49,7 @@ Device *mtpc_device_new_from_raw_device(LIBMTP_raw_device_t *rawdevice)
 	guint8 max;
 	guint8 cur;
 
+	mtpc_debug("mtpc_device_new_from_raw_device\n");
 	device = g_new0(Device, 1);
 
 	/* Raw Device */
@@ -132,47 +135,39 @@ Device *mtpc_device_new_from_raw_device(LIBMTP_raw_device_t *rawdevice)
 
 void mtpc_device_destroy(Device *device)
 {
-	printf("device_destroy...");
-
+	mtpc_debug("mtpc_device_destroy\n");
 	g_return_if_fail(device != NULL);
 
-	printf("..");
 	_g_free(device->devname);
-	printf("..");
 	_g_free(device->model);
-	printf("..");
 	_g_free(device->manufacturer);
-	printf("..");
 	_g_free(device->serialnum);
-	printf("..");
 
 	_g_free(device->filetypes);
 	device->filetypes_len = 0;
-	printf("..");
 
 	LIBMTP_Release_Device(device->device);
 	device->device = NULL;
-	printf("..");
 
 	device->opened = FALSE;
-	printf("..");
 
 	device->connected = FALSE;
-	printf("..");
 
 	_g_free(device);
-	printf("..\n");
 }
 
 /* libmtp wrappers */
 void mtpc_device_libmtp_init(void)
 {
+	mtpc_debug("mtpc_device_libmtp_init\n");
         LIBMTP_Init();
 }
 
 libmtp_dev_t *mtpc_device_alloc_devices(void)
 {
         libmtp_dev_t *devices;
+
+	mtpc_debug("mtpc_device_alloc_devices\n");
 
         devices = malloc(sizeof (*devices));
         if (!devices) {
@@ -187,6 +182,8 @@ libmtp_dev_t *mtpc_device_alloc_devices(void)
 
 void mtpc_device_free_devices (libmtp_dev_t *devices)
 {
+	mtpc_debug("mtpc_device_free_devices\n");
+
         if (devices) {
                 if (devices->rawdevices) {
                         free(devices->rawdevices);
@@ -201,6 +198,8 @@ void mtpc_device_free_devices (libmtp_dev_t *devices)
 libmtp_err_t mtpc_device_detect_devices(libmtp_dev_t *devices)
 {
         libmtp_err_t err;
+
+	mtpc_debug("mtpc_device_detect_devices\n");
 
         err = LIBMTP_Detect_Raw_Devices(&devices->rawdevices,
 					&devices->numrawdevices);
