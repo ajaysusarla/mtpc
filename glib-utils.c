@@ -41,6 +41,14 @@ void _g_object_unref(gpointer object)
                 g_object_unref(object);
 }
 
+void _g_free(gpointer mem)
+{
+	if (mem != NULL) {
+		g_free(mem);
+		mem = NULL;
+	}
+}
+
 void _g_string_list_free(GList *string_list)
 {
 	if (string_list == NULL)

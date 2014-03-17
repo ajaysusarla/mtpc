@@ -29,6 +29,8 @@
 gpointer _g_object_ref(gpointer object);
 void _g_object_unref(gpointer object);
 
+void _g_free(gpointer mem);
+
 void _g_string_list_free(GList *string_list);
 
 #endif /* GLIB_UTILS_H */
