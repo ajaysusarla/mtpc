@@ -47,5 +47,7 @@ MtpcFileData *mtpc_file_data_new(GFile *file, GFileInfo *info);
 
 void mtpc_file_data_set_file(MtpcFileData *fdata, GFile *file);
 void mtpc_file_data_set_file_info(MtpcFileData *fdata, GFileInfo *info);
+void mtpc_file_data_set_folder_id(MtpcFileData *fdata, long folder_id);
+void mtpc_file_data_set_parent_folder_id(MtpcFileData *fdata, long parent_id);
 
 #endif /* MTPC_FILE_DATA_H */

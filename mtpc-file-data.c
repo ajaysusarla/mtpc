@@ -23,6 +23,8 @@
 typedef struct {
 	GFile *file;
 	GFileInfo *info;
+	long folder_id;
+	long parent_id;
 } MtpcFileDataPrivate;
 
 G_DEFINE_TYPE_WITH_PRIVATE(MtpcFileData, mtpc_file_data, G_TYPE_OBJECT);
@@ -41,6 +43,8 @@ static void mtpc_file_data_finalize(GObject *object)
 
 	_g_object_unref(priv->file);
 	_g_object_unref(priv->info);
+	priv->folder_id = 0;
+	priv->parent_id = 0;
 
 	G_OBJECT_CLASS(mtpc_file_data_parent_class)->finalize(object);
 
@@ -101,4 +105,22 @@ void mtpc_file_data_set_file_info(MtpcFileData *fdata, GFileInfo *info)
 		priv->info = info;
 	else
 		priv->info = g_file_info_new();
+}
+
+void mtpc_file_data_set_folder_id(MtpcFileData *fdata, long folder_id)
+{
+	MtpcFileDataPrivate *priv;
+
+	priv = mtpc_file_data_get_instance_private(fdata);
+
+	priv->folder_id = folder_id;
+}
+
+void mtpc_file_data_set_parent_folder_id(MtpcFileData *fdata, long parent_id)
+{
+	MtpcFileDataPrivate *priv;
+
+	priv = mtpc_file_data_get_instance_private(fdata);
+
+	priv->parent_id = parent_id;
 }
