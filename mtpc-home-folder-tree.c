@@ -19,13 +19,6 @@
 #include "mtpc-home-folder-tree.h"
 #include "glib-utils.h"
 
-typedef enum {
-	ENTRY_TYPE_FILE,
-	ENTRY_TYPE_FOLDER,
-	ENTRY_TYPE_CWD,
-	ENTRY_TYPE_PARENT
-} EntryType;
-
 enum {
         FOLDER_POPUP,
         LOAD,
