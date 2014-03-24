@@ -27,6 +27,7 @@
 #include "mtpc-actions-callbacks.h"
 #include "mtpc-devicelist.h"
 #include "mtpc-statusbar.h"
+#include "mtpc-file-data.h"
 #include "mtpc-home-folder-tree.h"
 #include "mtpc-device-folder-tree.h"
 
@@ -54,6 +55,7 @@ typedef struct {
 	GtkWidget *devicelist;
 
 	GList *dlist;
+	GQueue *dev_folder_queue;
 
 	GCancellable *cancellable;
 
@@ -64,6 +66,83 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcWindow, mtpc_window, GTK_TYPE_APPLICATION_WINDOW)
 
 
 /* callbacks and internal methods */
+static MtpcFileData *create_file_data(LIBMTP_file_t *file)
+{
+	GFileInfo *info = NULL;
+	MtpcFileData *mfile = NULL;
+	GIcon *icon = NULL;
+	char *content_type = NULL;
+	FileDataType ftype = ENTRY_TYPE_NOT_SET;
+
+	info = g_file_info_new();
+
+	g_file_info_set_name(info, file->filename);
+	g_file_info_set_display_name(info, file->filename);
+
+	switch (file->filetype) {
+	case LIBMTP_FILETYPE_FOLDER:
+		g_file_info_set_file_type(info, G_FILE_TYPE_DIRECTORY);
+		g_file_info_set_content_type(info, "inode/directory");
+		icon = g_themed_icon_new("folder");
+		g_file_info_set_attribute_boolean(info, G_FILE_ATTRIBUTE_ACCESS_CAN_EXECUTE, TRUE);
+		ftype = ENTRY_TYPE_FOLDER;
+		break;
+	default:
+		g_file_info_set_file_type(info, G_FILE_TYPE_REGULAR);
+		g_file_info_set_attribute_boolean(info, G_FILE_ATTRIBUTE_ACCESS_CAN_EXECUTE, FALSE);
+		content_type = g_content_type_guess(file->filename, NULL, 0, NULL);
+		g_file_info_set_content_type(info, content_type);
+		icon = g_content_type_get_icon(content_type);
+		ftype = ENTRY_TYPE_FILE;
+	}
+
+	g_free(content_type);
+
+	g_file_info_set_size(info, file->filesize);
+	GTimeVal modtime = {file->modificationdate, 0};
+	g_file_info_set_modification_time(info, &modtime);
+	g_file_info_set_attribute_boolean(info,
+					  G_FILE_ATTRIBUTE_ACCESS_CAN_READ,
+					  TRUE);
+	g_file_info_set_attribute_boolean(info,
+					  G_FILE_ATTRIBUTE_ACCESS_CAN_WRITE,
+					  TRUE);
+	g_file_info_set_attribute_boolean(info,
+					  G_FILE_ATTRIBUTE_ACCESS_CAN_DELETE,
+					  TRUE);
+	g_file_info_set_attribute_boolean(info,
+					  G_FILE_ATTRIBUTE_ACCESS_CAN_TRASH,
+					  FALSE);
+	g_file_info_set_attribute_boolean(info,
+					  G_FILE_ATTRIBUTE_ACCESS_CAN_RENAME,
+					  TRUE);
+
+	if (icon != NULL) {
+		g_file_info_set_icon(info, icon);
+		g_object_unref(icon);;
+	}
+
+	mfile = mtpc_file_data_new(NULL, info);
+	mtpc_file_data_set_folder_id(mfile, file->item_id);
+	mtpc_file_data_set_parent_folder_id(mfile, file->parent_id);
+	mtpc_file_data_set_file_type(mfile, ftype);
+
+	return mfile;
+}
+
+static MtpcFileData *create_parent_file_data(MtpcFileData *fdata)
+{
+	MtpcFileData *parent_fdata;
+
+	parent_fdata = mtpc_file_data_new(NULL, NULL);
+	mtpc_file_data_set_dev_info(parent_fdata,
+				    mtpc_file_data_get_dev(fdata),
+				    mtpc_file_data_get_device_index(fdata));
+	mtpc_file_data_set_file_type(parent_fdata, ENTRY_TYPE_PARENT);
+
+	return parent_fdata;
+}
+
 void _mtpc_window_device_add(MtpcWindow *window, Device *device)
 {
 	MtpcWindowPrivate *priv;
@@ -92,6 +171,80 @@ static gboolean update_statusbar(gpointer data)
 	MTPC_STATUSBAR_UPDATE(statusbar, "", "Fetching device information", "");
 
 	return TRUE;
+}
+
+static void device_folder_tree_open_cb(MtpcDeviceFolderTree *folder_tree,
+				       MtpcFileData *fdata,
+				       gpointer user_data)
+{
+	LIBMTP_file_t *files = NULL;
+	LIBMTP_mtpdevice_t *dev;
+	MtpcWindow *window = MTPC_WINDOW(user_data);
+	MtpcWindowPrivate *priv;
+	int dev_index;
+	long parent_id = -1;
+	long folder_id = -1;
+	GList *flist = NULL;
+	MtpcFileData *parent_fdata = NULL;
+	FileDataType ftype;
+
+	priv = mtpc_window_get_instance_private(window);
+
+	dev = mtpc_file_data_get_dev(fdata);
+	dev_index = mtpc_file_data_get_device_index(fdata);
+	parent_id = mtpc_file_data_get_parent_folder_id(fdata);
+
+	/* check if we were requested for parent folder */
+	ftype = mtpc_file_data_get_file_type(fdata);
+	if (ftype == ENTRY_TYPE_PARENT) {
+		/* load the parent folder */
+		parent_fdata = g_queue_pop_head(priv->dev_folder_queue);
+		folder_id = mtpc_file_data_get_folder_id(parent_fdata);
+		if (folder_id == 0)
+			folder_id = -1;
+	} else {
+		folder_id = mtpc_file_data_get_folder_id(fdata);
+		/* Create the parent directory link
+		   only if we aren't the top level folder.
+		 */
+		parent_id = mtpc_file_data_get_parent_folder_id(fdata);
+
+		parent_fdata = create_parent_file_data(fdata);
+		mtpc_file_data_set_folder_id(parent_fdata, parent_id);
+		/* pushing the file data to queue */
+		g_queue_push_head(priv->dev_folder_queue, parent_fdata);
+
+	}
+
+	/* if parent_fdata is null*/
+	if ((ftype == ENTRY_TYPE_PARENT) && (parent_fdata == NULL))
+		folder_id = -1;
+
+	if (folder_id == -1)
+		parent_id = -1;
+
+
+	files = LIBMTP_Get_Files_And_Folders(dev, dev_index, folder_id);
+
+	while (files != NULL) {
+		LIBMTP_file_t *f = files;
+		MtpcFileData *mfile;
+
+		mfile = create_file_data(f);
+
+		mtpc_file_data_set_dev_info(mfile, dev, dev_index);
+
+		flist = g_list_prepend(flist, mfile);
+
+		files = files->next;
+
+		LIBMTP_destroy_file_t(f);
+	}
+
+	mtpc_device_folder_tree_set_list(MTPC_DEVICE_FOLDER_TREE(priv->device_folder_tree),
+					 parent_id,
+					 parent_fdata,
+					 flist);
 }
 
 
@@ -179,11 +332,42 @@ static void devicelist_device_open_cb(MtpcDevicelist *devicelist,
 }
 
 static void devicelist_device_load_cb(MtpcDevicelist *devicelist,
+				      int index,
 				      Device *device,
 				      gpointer user_data)
 {
+	LIBMTP_file_t *files = NULL;
+	LIBMTP_mtpdevice_t *dev = device->device;
 	MtpcWindow *window = MTPC_WINDOW(user_data);
+	MtpcWindowPrivate *priv;
+	long parent_id = -1;
+	GList *flist = NULL;
+
+	priv = mtpc_window_get_instance_private(window);
+
 	printf("devicelist_device_load_cb\n");
+
+	files = LIBMTP_Get_Files_And_Folders(dev, index, parent_id);
+
+	while (files != NULL) {
+		LIBMTP_file_t *f = files;
+		MtpcFileData *mfile;
+
+		mfile = create_file_data(f);
+		mtpc_file_data_set_dev_info(mfile, dev, index);
+
+		flist = g_list_prepend(flist, mfile);
+
+		files = files->next;
+
+		LIBMTP_destroy_file_t(f);
+	}
+
+	mtpc_device_folder_tree_set_list(MTPC_DEVICE_FOLDER_TREE(priv->device_folder_tree),
+					 parent_id,
+					 NULL,
+					 flist);
+
 }
 
 static void folder_tree_drag_data_received_cb(GtkWidget        *tree_view,
@@ -577,12 +761,26 @@ static void mtpc_window_dispose(GObject *object)
 	G_OBJECT_CLASS(mtpc_window_parent_class)->dispose(object);
 }
 
+static void mtpc_window_finalize(GObject *object)
+{
+	MtpcWindow *window = MTPC_WINDOW(object);
+	MtpcWindowPrivate *priv;
+
+	priv = mtpc_window_get_instance_private(window);
+
+	g_queue_free(priv->dev_folder_queue);
+	g_list_free(priv->dlist);
+
+	G_OBJECT_CLASS(mtpc_window_parent_class)->finalize(object);
+}
+
 static void mtpc_window_class_init(MtpcWindowClass *klass)
 {
 	GObjectClass *obj_class = G_OBJECT_CLASS(klass);
 	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS(klass);
 
 	obj_class->dispose = mtpc_window_dispose;
+	obj_class->finalize = mtpc_window_finalize;
 }
 
 static void mtpc_window_init(MtpcWindow *win)
@@ -596,8 +794,9 @@ static void mtpc_window_init(MtpcWindow *win)
 
 	priv = mtpc_window_get_instance_private(win);
 
-	/* */
+	/* init data */
 	priv->dlist = NULL;
+	priv->dev_folder_queue = g_queue_new();
 
 	window = GTK_WIDGET(win);
 
@@ -664,6 +863,11 @@ static void mtpc_window_init(MtpcWindow *win)
 	priv->device_folder_tree = mtpc_device_folder_tree_new();
 	gtk_container_add(GTK_CONTAINER(priv->device_scrolled),
 			  priv->device_folder_tree);
+
+	g_signal_connect(priv->device_folder_tree,
+			 "open",
+			 G_CALLBACK(device_folder_tree_open_cb),
+			 win);
 
         gtk_paned_pack2(GTK_PANED(priv->left_container),
 			priv->device_scrolled, FALSE, FALSE);

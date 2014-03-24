@@ -20,7 +20,6 @@
 #include "glib-utils.h"
 
 
-
 enum {
         FOLDER_POPUP,
         LOAD,
@@ -33,7 +32,8 @@ enum {
 	COLUMN_ICON,
 	COLUMN_NAME,
 	COLUMN_SIZE,
-	COLUMN_GINFO,
+	COLUMN_FOLDER_ID,
+	COLUMN_FDATA,
 	NUM_COLUMNS
 };
 
@@ -65,7 +65,7 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcDeviceFolderTree,
 static gboolean selection_changed_cb(GtkTreeSelection *selection,
 				     gpointer user_data)
 {
-	printf("selection_changed_cb\n");
+//	printf("selection_changed_cb\n");
 	return FALSE;
 }
 
@@ -75,7 +75,7 @@ static gboolean popup_menu_cb(GtkWidget *widget, gpointer user_data)
 	MtpcDeviceFolderTreePrivate *priv;
 	GtkTreeStore *tree_store;
 	GtkTreeIter iter;
-	GFileInfo *ginfo;
+	MtpcFileData *fdata;
 
 	priv = mtpc_device_folder_tree_get_instance_private(folder_tree);
 	tree_store = priv->tree_store;
@@ -84,17 +84,17 @@ static gboolean popup_menu_cb(GtkWidget *widget, gpointer user_data)
 
 			gtk_tree_model_get(GTK_TREE_MODEL(tree_store),
 					   &iter,
-					   COLUMN_GINFO, &ginfo,
+					   COLUMN_FDATA, &fdata,
 					   -1);
 
-			if (!ginfo)
+			if (!fdata)
 				return FALSE;
 	}
 
 	g_signal_emit(folder_tree,
 		      mtpc_device_folder_tree_signals[FOLDER_POPUP],
 		      0,
-		      ginfo);
+		      fdata);
 
 
 	return TRUE;
@@ -149,18 +149,18 @@ static gboolean button_press_cb(GtkWidget *widget,
 	}
 
 	if (event->button == 3) {
-		GFileInfo *ginfo;
+		MtpcFileData *fdata;
 
 		gtk_tree_model_get(GTK_TREE_MODEL(priv->tree_store),
 				   &iter,
-				   COLUMN_GINFO, &ginfo,
+				   COLUMN_FDATA, &fdata,
 				   -1);
 
-		if (ginfo) {
+		if (fdata) {
 			g_signal_emit(folder_tree,
 				      mtpc_device_folder_tree_signals[FOLDER_POPUP],
 				      0,
-				      ginfo);
+				      fdata);
 
 			retval = TRUE;
 		}
@@ -199,11 +199,11 @@ static gboolean button_release_event_cb(GtkWidget *widget,
 	return FALSE;
 }
 
-static void open_folder(MtpcDeviceFolderTree *folder_tree, GFileInfo *ginfo)
+static void open_folder(MtpcDeviceFolderTree *folder_tree, MtpcFileData *fdata)
 {
 	g_signal_emit(folder_tree,
 		      mtpc_device_folder_tree_signals[OPEN],
-		      0, ginfo);
+		      0, fdata);
 }
 
 static gboolean row_activated_cb(GtkTreeView *tree_view,
@@ -215,7 +215,7 @@ static gboolean row_activated_cb(GtkTreeView *tree_view,
 	MtpcDeviceFolderTree *folder_tree = MTPC_DEVICE_FOLDER_TREE(user_data);
 	MtpcDeviceFolderTreePrivate *priv;
 	GtkTreeIter iter;
-	GFileInfo *ginfo;
+	MtpcFileData *fdata;
 
 
 	priv = mtpc_device_folder_tree_get_instance_private(folder_tree);
@@ -229,10 +229,10 @@ static gboolean row_activated_cb(GtkTreeView *tree_view,
 
 	gtk_tree_model_get(GTK_TREE_MODEL(priv->tree_store),
 			   &iter,
-			   COLUMN_GINFO, &ginfo,
+			   COLUMN_FDATA, &fdata,
 			   -1);
 
-	open_folder(folder_tree, ginfo);
+	open_folder(folder_tree, fdata);
 	return TRUE;
 }
 
@@ -397,6 +397,7 @@ static void mtpc_device_folder_tree_init(MtpcDeviceFolderTree *folder_tree)
 					      G_TYPE_ICON,
 					      G_TYPE_STRING,
 					      G_TYPE_STRING,
+					      G_TYPE_LONG,
 					      G_TYPE_POINTER);
 
 	gtk_tree_view_set_model(GTK_TREE_VIEW(folder_tree),
@@ -448,19 +449,30 @@ GtkWidget *mtpc_device_folder_tree_new(void)
 	return GTK_WIDGET(folder_tree);
 }
 
+void mtpc_device_folder_tree_clear(MtpcDeviceFolderTree *folder_tree)
+{
+	MtpcDeviceFolderTreePrivate *priv;
+
+	priv = mtpc_device_folder_tree_get_instance_private(folder_tree);
+
+	gtk_tree_store_clear(priv->tree_store);
+}
+
 void mtpc_device_folder_tree_set_list(MtpcDeviceFolderTree *folder_tree,
 				      long parent_id,
+				      MtpcFileData *parent_fdata,
 				      GList *file_list)
 {
 	MtpcDeviceFolderTreePrivate *priv;
 	GList *l;
 
 	l = file_list;
+
 	priv = mtpc_device_folder_tree_get_instance_private(folder_tree);
 
 	gtk_tree_store_clear(priv->tree_store);
-/*
-	if (parent_id != -1) {
+
+	if(parent_id != -1) {
 		GtkTreeIter iter;
 		GIcon *icon;
 
@@ -473,23 +485,26 @@ void mtpc_device_folder_tree_set_list(MtpcDeviceFolderTree *folder_tree,
 				   COLUMN_ICON, icon,
 				   COLUMN_NAME, "../",
 				   COLUMN_SIZE, "",
-				   COLUMN_GINFO, &parent_id,
+				   COLUMN_FOLDER_ID, parent_id,
+				   COLUMN_FDATA, parent_fdata,
 				   -1);
-
 
 		_g_object_unref(icon);
 	}
-*/
-
 
 	while(l) {
-		GFileInfo *info = l->data;
+		MtpcFileData *fdata = l->data;
+		GFileInfo *info;
 		GtkTreeIter iter;
 		GIcon *icon;
 		const char *name;
 		char size[20];
 		GFileType ftype;
 		GError *error;
+		long folder_id;
+
+		info = mtpc_file_data_get_file_info(fdata);
+		folder_id = mtpc_file_data_get_folder_id(fdata);
 
 		name = g_file_info_get_name(info);
 
@@ -505,7 +520,8 @@ void mtpc_device_folder_tree_set_list(MtpcDeviceFolderTree *folder_tree,
 				   COLUMN_ICON, icon,
 				   COLUMN_NAME, name,
 				   COLUMN_SIZE, size,
-				   COLUMN_GINFO, info,
+				   COLUMN_FOLDER_ID, folder_id,
+				   COLUMN_FDATA, fdata,
 				   -1);
 
 		l = l->next;

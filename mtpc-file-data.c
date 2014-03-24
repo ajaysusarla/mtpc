@@ -21,8 +21,14 @@
 
 
 typedef struct {
+	FileDataType ftype;
+
 	GFile *file;
 	GFileInfo *info;
+
+	LIBMTP_mtpdevice_t *dev;
+	int dev_index;
+
 	long folder_id;
 	long parent_id;
 } MtpcFileDataPrivate;
@@ -43,8 +49,12 @@ static void mtpc_file_data_finalize(GObject *object)
 
 	_g_object_unref(priv->file);
 	_g_object_unref(priv->info);
-	priv->folder_id = 0;
-	priv->parent_id = 0;
+
+	priv->dev = NULL;
+	priv->dev_index = -1;
+
+	priv->folder_id = -1;
+	priv->parent_id = -1;
 
 	G_OBJECT_CLASS(mtpc_file_data_parent_class)->finalize(object);
 
@@ -59,6 +69,11 @@ static void mtpc_file_data_class_init(MtpcFileDataClass *klass)
 
 static void mtpc_file_data_init(MtpcFileData *fdata)
 {
+	MtpcFileDataPrivate *priv;
+
+	priv = mtpc_file_data_get_instance_private(fdata);
+
+	priv->ftype = ENTRY_TYPE_NOT_SET;
 }
 
 /* public */
@@ -123,4 +138,114 @@ void mtpc_file_data_set_parent_folder_id(MtpcFileData *fdata, long parent_id)
 	priv = mtpc_file_data_get_instance_private(fdata);
 
 	priv->parent_id = parent_id;
+}
+
+void mtpc_file_data_set_dev_info(MtpcFileData *fdata,
+				 LIBMTP_mtpdevice_t *dev,
+				 int device_index)
+{
+	MtpcFileDataPrivate *priv;
+
+	priv = mtpc_file_data_get_instance_private(fdata);
+
+	priv->dev = dev;
+	priv->dev_index = device_index;
+}
+
+GFileInfo * mtpc_file_data_get_file_info(MtpcFileData *fdata)
+{
+	MtpcFileDataPrivate *priv;
+
+	if (fdata != NULL) {
+		priv = mtpc_file_data_get_instance_private(fdata);
+
+		if (priv->info != NULL)
+			return priv->info;
+	}
+
+	return NULL;
+}
+
+GFile * mtpc_file_data_get_file(MtpcFileData *fdata)
+{
+	MtpcFileDataPrivate *priv;
+
+	if (fdata != NULL) {
+		priv = mtpc_file_data_get_instance_private(fdata);
+
+		if (priv->info != NULL)
+			return priv->file;
+	}
+
+	return NULL;
+}
+
+long mtpc_file_data_get_folder_id(MtpcFileData *fdata)
+{
+	MtpcFileDataPrivate *priv;
+
+	if (fdata != NULL)
+		priv = mtpc_file_data_get_instance_private(fdata);
+
+	return priv->folder_id;
+}
+
+long mtpc_file_data_get_parent_folder_id(MtpcFileData *fdata)
+{
+	MtpcFileDataPrivate *priv;
+
+	if (fdata != NULL)
+		priv = mtpc_file_data_get_instance_private(fdata);
+	return priv->parent_id;
+}
+
+LIBMTP_mtpdevice_t * mtpc_file_data_get_dev(MtpcFileData *fdata)
+{
+	MtpcFileDataPrivate *priv;
+
+	if (fdata != NULL) {
+		priv = mtpc_file_data_get_instance_private(fdata);
+
+		return priv->dev;
+	}
+
+	return NULL;
+}
+
+int mtpc_file_data_get_device_index(MtpcFileData *fdata)
+{
+	MtpcFileDataPrivate *priv;
+
+	if (fdata != NULL) {
+		priv = mtpc_file_data_get_instance_private(fdata);
+
+		return priv->dev_index;
+	}
+
+	return -1;
+}
+
+void mtpc_file_data_set_file_type(MtpcFileData *fdata, FileDataType type)
+{
+	MtpcFileDataPrivate *priv;
+
+	if (fdata == NULL)
+		return;
+
+	priv = mtpc_file_data_get_instance_private(fdata);
+
+	priv->ftype = type;
+}
+
+FileDataType mtpc_file_data_get_file_type(MtpcFileData *fdata)
+{
+	MtpcFileDataPrivate *priv;
+
+	if (fdata == NULL)
+		return -1;
+
+	priv = mtpc_file_data_get_instance_private(fdata);
+
+	return priv->ftype;
+
 }

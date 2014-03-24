@@ -20,6 +20,8 @@
 
 #include <gtk/gtk.h>
 
+#include "mtpc-file-data.h"
+
 #define MTPC_TYPE_DEVICE_FOLDER_TREE              (mtpc_device_folder_tree_get_type())
 #define MTPC_DEVICE_FOLDER_TREE(obj)              (G_TYPE_CHECK_INSTANCE_CAST((obj), MTPC_TYPE_DEVICE_FOLDER_TREE, MtpcDeviceFolderTree))
 #define MTPC_DEVICE_FOLDER_TREE_CLASS(klass)      (G_TYPE_CHECK_CLASS_CAST((klass), MTPC_TYPE_DEVICE_FOLDER_TREE, MtpcDeviceFolderTreeClass))
@@ -50,8 +52,9 @@ struct _MtpcDeviceFolderTreeClass {
 
 GType mtpc_device_folder_tree_get_type(void);
 GtkWidget *mtpc_device_folder_tree_new(void);
+void mtpc_device_folder_tree_clear(MtpcDeviceFolderTree *folder_tree);
 void mtpc_device_folder_tree_set_list(MtpcDeviceFolderTree *folder_tree,
 				      long parent_id,
+				      MtpcFileData *parent_fdata,
 				      GList *file_list);
-
 #endif /* MTPC_DEVICE_FOLDER_TREE_H */
