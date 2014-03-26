@@ -216,10 +216,16 @@ static void device_folder_tree_open_cb(MtpcDeviceFolderTree *folder_tree,
 
 	}
 
-	/* if parent_fdata is null*/
+	/* if parent_fdata is null, we are essentially at the top level
+	   folder.
+	 */
 	if ((ftype == ENTRY_TYPE_PARENT) && (parent_fdata == NULL))
 		folder_id = -1;
 
+	/*
+	  setting folder_id & parent_id to -1 will load the top level folder
+	  in the device.
+	 */
 	if (folder_id == -1)
 		parent_id = -1;
 
