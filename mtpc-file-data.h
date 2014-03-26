@@ -76,4 +76,7 @@ int mtpc_file_data_get_device_index(MtpcFileData *fdata);
 
 void mtpc_file_data_set_file_type(MtpcFileData *fdata, FileDataType type);
 FileDataType mtpc_file_data_get_file_type(MtpcFileData *fdata);
+
+gboolean mtpc_file_data_is_directory(MtpcFileData *fdata);
+
 #endif /* MTPC_FILE_DATA_H */

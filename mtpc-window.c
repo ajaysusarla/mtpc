@@ -188,14 +188,22 @@ static void device_folder_tree_open_cb(MtpcDeviceFolderTree *folder_tree,
 	MtpcFileData *parent_fdata = NULL;
 	FileDataType ftype;
 
+	ftype = mtpc_file_data_get_file_type(fdata);
+
+	/* we aren't a opening a file, return */
+	if (!mtpc_file_data_is_directory(fdata) &&
+	    (ftype != ENTRY_TYPE_PARENT)) {
+		return;
+	}
+
 	priv = mtpc_window_get_instance_private(window);
 
 	dev = mtpc_file_data_get_dev(fdata);
+
 	dev_index = mtpc_file_data_get_device_index(fdata);
 	parent_id = mtpc_file_data_get_parent_folder_id(fdata);
 
 	/* check if we were requested for parent folder */
-	ftype = mtpc_file_data_get_file_type(fdata);
 	if (ftype == ENTRY_TYPE_PARENT) {
 		/* load the parent folder */
 		parent_fdata = g_queue_pop_head(priv->dev_folder_queue);

@@ -249,3 +249,15 @@ FileDataType mtpc_file_data_get_file_type(MtpcFileData *fdata)
 	return priv->ftype;
 
 }
+
+gboolean mtpc_file_data_is_directory(MtpcFileData *fdata)
+{
+	GFileInfo *info;
+
+	info = mtpc_file_data_get_file_info(fdata);
+
+	if (g_file_info_get_file_type(info) == G_FILE_TYPE_DIRECTORY)
+		return TRUE;
+	else
+		return FALSE;
+}
