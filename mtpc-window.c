@@ -568,6 +568,22 @@ static void paste_cb(GSimpleAction *action,
 {
 }
 
+static void change_toolbar_view_state(GSimpleAction *action,
+				      GVariant      *state,
+				      gpointer       user_data)
+{
+	MtpcWindow *window = MTPC_WINDOW(user_data);
+	MtpcWindowPrivate *priv = mtpc_window_get_instance_private(window);
+
+	if (g_variant_get_boolean(state)) {
+		gtk_widget_show(priv->toolbar);
+	} else {
+		gtk_widget_hide(priv->toolbar);
+	}
+
+	g_simple_action_set_state(action, state);
+}
+
 static void _mtpc_window_set_home_folder_visibility(GtkWidget *home_folder,
 						    gboolean visible)
 {
@@ -758,6 +774,7 @@ static GActionEntry win_entries[] = {
         { "copy", copy_cb, NULL, NULL, NULL },
         { "paste", paste_cb, NULL, NULL, NULL },
 	/* view */
+        { "toggle-toolbar", toggle_action_activated, NULL, "true", change_toolbar_view_state },
         { "toggle-home-folder", toggle_action_activated, NULL, "false", change_home_folder_view_state },
         { "toggle-device-properties", toggle_action_activated, NULL, "false", change_device_properties_view },
         { "toggle-status-bar", toggle_action_activated, NULL, "true", change_statusbar_view_state },
