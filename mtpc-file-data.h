@@ -79,4 +79,6 @@ FileDataType mtpc_file_data_get_file_type(MtpcFileData *fdata);
 
 gboolean mtpc_file_data_is_directory(MtpcFileData *fdata);
 
+const gchar * mtpc_file_data_get_file_name(MtpcFileData *fdata);
+
 #endif /* MTPC_FILE_DATA_H */

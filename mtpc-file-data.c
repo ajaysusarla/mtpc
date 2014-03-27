@@ -261,3 +261,19 @@ gboolean mtpc_file_data_is_directory(MtpcFileData *fdata)
 	else
 		return FALSE;
 }
+
+const gchar * mtpc_file_data_get_file_name(MtpcFileData *fdata)
+{
+	MtpcFileDataPrivate *priv;
+
+	if (fdata == NULL)
+		return NULL;
+
+	priv = mtpc_file_data_get_instance_private(fdata);
+
+	if (priv->info) {
+		return (g_file_info_get_name(priv->info));
+	} else {
+		return NULL;
+	}
+}
