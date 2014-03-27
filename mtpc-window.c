@@ -28,8 +28,8 @@
 #include "mtpc-devicelist.h"
 #include "mtpc-statusbar.h"
 #include "mtpc-file-data.h"
+#include "mtpc-folder-tree.h"
 #include "mtpc-home-folder-tree.h"
-#include "mtpc-device-folder-tree.h"
 
 typedef struct {
 	GtkWidget *headerbar;
@@ -173,7 +173,7 @@ static gboolean update_statusbar(gpointer data)
 	return TRUE;
 }
 
-static void device_folder_tree_open_cb(MtpcDeviceFolderTree *folder_tree,
+static void device_folder_tree_open_cb(MtpcFolderTree *folder_tree,
 				       MtpcFileData *fdata,
 				       gpointer user_data)
 {
@@ -255,10 +255,11 @@ static void device_folder_tree_open_cb(MtpcDeviceFolderTree *folder_tree,
 		LIBMTP_destroy_file_t(f);
 	}
 
-	mtpc_device_folder_tree_set_list(MTPC_DEVICE_FOLDER_TREE(priv->device_folder_tree),
-					 parent_id,
-					 parent_fdata,
-					 flist);
+	mtpc_folder_tree_set_list(MTPC_FOLDER_TREE(priv->device_folder_tree),
+				  NULL,
+				  parent_id,
+				  parent_fdata,
+				  flist);
 }
 
 
@@ -327,7 +328,6 @@ static void home_folder_tree_load_cb(MtpcHomeFolderTree *folder_tree,
 				     GFile *gfile,
 				     gpointer user_data)
 {
-	MtpcWindow *window = MTPC_WINDOW(user_data);
 	printf("home_folder_tree_load_cb\n");
 }
 
@@ -377,10 +377,11 @@ static void devicelist_device_load_cb(MtpcDevicelist *devicelist,
 		LIBMTP_destroy_file_t(f);
 	}
 
-	mtpc_device_folder_tree_set_list(MTPC_DEVICE_FOLDER_TREE(priv->device_folder_tree),
-					 parent_id,
-					 NULL,
-					 flist);
+	mtpc_folder_tree_set_list(MTPC_FOLDER_TREE(priv->device_folder_tree),
+				  NULL,
+				  parent_id,
+				  NULL,
+				  flist);
 
 }
 
@@ -602,11 +603,9 @@ static void change_home_folder_view_state(GSimpleAction *action,
 	MtpcWindowPrivate *priv = mtpc_window_get_instance_private(window);
 
 	if (g_variant_get_boolean(state)) {
-		printf("show home folder\n");
 		_mtpc_window_set_home_folder_visibility(priv->home_scrolled,
 							TRUE);
 	} else {
-		printf("hide home folder\n");
 		_mtpc_window_set_home_folder_visibility(priv->home_scrolled,
 							FALSE);
 	}
@@ -891,7 +890,7 @@ static void mtpc_window_init(MtpcWindow *win)
                                             GTK_SHADOW_IN);
 	gtk_widget_show(GTK_WIDGET(priv->device_scrolled));
 
-	priv->device_folder_tree = mtpc_device_folder_tree_new();
+	priv->device_folder_tree = mtpc_folder_tree_new();
 	gtk_container_add(GTK_CONTAINER(priv->device_scrolled),
 			  priv->device_folder_tree);
 
