@@ -95,6 +95,7 @@ OBJS =  main.o \
 	mtpc-device.o \
 	mtpc-devicelist.o \
 	mtpc-statusbar.o \
+	mtpc-folder-tree.o \
 	mtpc-home-folder-tree.o \
 	mtpc-device-folder-tree.o \
 	mtpc-file-data.o \
@@ -112,6 +113,7 @@ HDRS = 	main.h \
 	mtpc-device.h \
 	mtpc-devicelist.h \
 	mtpc-statusbar.h \
+	mtpc-folder-tree.h \
 	mtpc-home-folder-tree.h \
 	mtpc-device-folder-tree.h \
 	mtpc-file-data.h \
