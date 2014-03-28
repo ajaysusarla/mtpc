@@ -96,7 +96,6 @@ OBJS =  main.o \
 	mtpc-devicelist.o \
 	mtpc-statusbar.o \
 	mtpc-folder-tree.o \
-	mtpc-home-folder-tree.o \
 	mtpc-file-data.o \
 	$(NULL)
 
@@ -113,7 +112,6 @@ HDRS = 	main.h \
 	mtpc-devicelist.h \
 	mtpc-statusbar.h \
 	mtpc-folder-tree.h \
-	mtpc-home-folder-tree.h \
 	mtpc-file-data.h \
 	$(NULL)
 

@@ -29,7 +29,6 @@
 #include "mtpc-statusbar.h"
 #include "mtpc-file-data.h"
 #include "mtpc-folder-tree.h"
-#include "mtpc-home-folder-tree.h"
 
 typedef struct {
 	GtkWidget *headerbar;
@@ -66,7 +65,7 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcWindow, mtpc_window, GTK_TYPE_APPLICATION_WINDOW)
 
 
 /* callbacks and internal methods */
-static MtpcFileData *create_file_data(LIBMTP_file_t *file)
+static MtpcFileData *create_file_data_from_libmtp_file(LIBMTP_file_t *file)
 {
 	GFileInfo *info = NULL;
 	MtpcFileData *mfile = NULL;
@@ -130,7 +129,7 @@ static MtpcFileData *create_file_data(LIBMTP_file_t *file)
 	return mfile;
 }
 
-static MtpcFileData *create_parent_file_data(MtpcFileData *fdata)
+static MtpcFileData *create_parent_file_data_from_libmtp_file(MtpcFileData *fdata)
 {
 	MtpcFileData *parent_fdata;
 
@@ -198,6 +197,8 @@ static void device_folder_tree_open_cb(MtpcFolderTree *folder_tree,
 
 	priv = mtpc_window_get_instance_private(window);
 
+	MTPC_STATUSBAR_RESET(MTPC_STATUSBAR(priv->statusbar));
+
 	dev = mtpc_file_data_get_dev(fdata);
 
 	dev_index = mtpc_file_data_get_device_index(fdata);
@@ -217,7 +218,7 @@ static void device_folder_tree_open_cb(MtpcFolderTree *folder_tree,
 		 */
 		parent_id = mtpc_file_data_get_parent_folder_id(fdata);
 
-		parent_fdata = create_parent_file_data(fdata);
+		parent_fdata = create_parent_file_data_from_libmtp_file(fdata);
 		mtpc_file_data_set_folder_id(parent_fdata, parent_id);
 		/* pushing the file data to queue */
 		g_queue_push_head(priv->dev_folder_queue, parent_fdata);
@@ -227,16 +228,25 @@ static void device_folder_tree_open_cb(MtpcFolderTree *folder_tree,
 	/* if parent_fdata is null, we are essentially at the top level
 	   folder.
 	 */
-	if ((ftype == ENTRY_TYPE_PARENT) && (parent_fdata == NULL))
+	if ((ftype == ENTRY_TYPE_PARENT) && (parent_fdata == NULL)) {
 		folder_id = -1;
+		printf("===Setting folder_id to -1===\n");
+	}
 
 	/*
 	  setting folder_id & parent_id to -1 will load the top level folder
 	  in the device.
 	 */
-	if (folder_id == -1)
+	if (folder_id == -1) {
 		parent_id = -1;
+		mtpc_file_data_set_has_parent(parent_fdata, FALSE);
+		mtpc_file_data_set_folder_id(parent_fdata, parent_id);
+	}
 
+	MTPC_STATUSBAR_UPDATE(MTPC_STATUSBAR(priv->statusbar),
+			      "Loading Folder",
+			      mtpc_file_data_get_file_name(fdata),
+			      "");
 
 	files = LIBMTP_Get_Files_And_Folders(dev, dev_index, folder_id);
 
@@ -244,7 +254,7 @@ static void device_folder_tree_open_cb(MtpcFolderTree *folder_tree,
 		LIBMTP_file_t *f = files;
 		MtpcFileData *mfile;
 
-		mfile = create_file_data(f);
+		mfile = create_file_data_from_libmtp_file(f);
 
 		mtpc_file_data_set_dev_info(mfile, dev, dev_index);
 
@@ -256,33 +266,52 @@ static void device_folder_tree_open_cb(MtpcFolderTree *folder_tree,
 	}
 
 	mtpc_folder_tree_set_list(MTPC_FOLDER_TREE(priv->device_folder_tree),
-				  NULL,
-				  parent_id,
 				  parent_fdata,
 				  flist);
+
+	MTPC_STATUSBAR_UPDATE(MTPC_STATUSBAR(priv->statusbar),
+			      "Loading Folder",
+			      mtpc_file_data_get_file_name(fdata),
+			      "..Done.");
 }
 
 
-static void home_folder_tree_popup_cb(MtpcHomeFolderTree *folder_tree,
+static void home_folder_tree_popup_cb(MtpcFolderTree *folder_tree,
 				      GFile *gfile,
 				      gpointer user_data)
 {
 	printf("home_folder_tree_popup_cb\n");
 }
 
-static void home_folder_tree_open_cb(MtpcHomeFolderTree *folder_tree,
-				     GFile *gfile,
+static void home_folder_tree_open_cb(MtpcFolderTree *folder_tree,
+				     MtpcFileData *fdata,
 				     gpointer user_data)
 {
 	MtpcWindow *window = MTPC_WINDOW(user_data);
 	GFile *parent;
+	GFile *gfile;
 	GList *flist = NULL;
 	GFileEnumerator *enumerator;
 	GError *error;
-	GFileInfo *info;
+	GFileInfo *info, *parent_info;
+	MtpcFileData *parent_fdata;
 	const char *path;
 
+	gfile = mtpc_file_data_get_file(fdata);
 	parent = g_file_get_parent(gfile);
+
+	parent_info = g_file_query_info(parent,
+					"standard::*",
+					G_FILE_QUERY_INFO_NONE,
+					NULL,
+					&error);
+
+	parent_fdata = mtpc_file_data_new(parent, parent_info);
+
+	if (parent == NULL) {
+		printf("***HOME: DOESN'T HAVE PARENT\n");
+		mtpc_file_data_set_has_parent(parent_fdata, FALSE);
+	}
 
 	path = g_file_get_path(gfile);
 
@@ -299,6 +328,9 @@ static void home_folder_tree_open_cb(MtpcHomeFolderTree *folder_tree,
 
 	do {
 		GFile *gfile;
+		GFileInfo *t_info;
+		MtpcFileData *data;
+
 		error = NULL;
 		info = g_file_enumerator_next_file(enumerator,
 						   NULL,
@@ -308,8 +340,17 @@ static void home_folder_tree_open_cb(MtpcHomeFolderTree *folder_tree,
 			break;
 
 		gfile = g_file_enumerator_get_child(enumerator, info);
+		/* XXX: Is this necessary?? We should be able to use
+		   the info above. Please test and FIXME.*/
+		t_info = g_file_query_info(gfile,
+					   "standard::*",
+					   G_FILE_QUERY_INFO_NONE,
+					   NULL,
+					   &error);
 
-		flist = g_list_prepend(flist, gfile);
+		data = mtpc_file_data_new(gfile, t_info);
+
+		flist = g_list_prepend(flist, data);
 
 		_g_object_unref(info);
 	} while (1);
@@ -318,13 +359,12 @@ static void home_folder_tree_open_cb(MtpcHomeFolderTree *folder_tree,
 
 	mtpc_window_set_title(window, path);
 
-	mtpc_home_folder_tree_set_list(folder_tree,
-				       path,
-				       parent,
-				       flist);
+	mtpc_folder_tree_set_list(folder_tree,
+				  parent_fdata,
+				  flist);
 }
 
-static void home_folder_tree_load_cb(MtpcHomeFolderTree *folder_tree,
+static void home_folder_tree_load_cb(MtpcFolderTree *folder_tree,
 				     GFile *gfile,
 				     gpointer user_data)
 {
@@ -360,6 +400,10 @@ static void devicelist_device_load_cb(MtpcDevicelist *devicelist,
 	priv = mtpc_window_get_instance_private(window);
 
 	printf("devicelist_device_load_cb\n");
+	MTPC_STATUSBAR_UPDATE(MTPC_STATUSBAR(priv->statusbar),
+			      "Opening MTP device",
+			      device->model,
+			      "");
 
 	files = LIBMTP_Get_Files_And_Folders(dev, index, parent_id);
 
@@ -367,7 +411,7 @@ static void devicelist_device_load_cb(MtpcDevicelist *devicelist,
 		LIBMTP_file_t *f = files;
 		MtpcFileData *mfile;
 
-		mfile = create_file_data(f);
+		mfile = create_file_data_from_libmtp_file(f);
 		mtpc_file_data_set_dev_info(mfile, dev, index);
 
 		flist = g_list_prepend(flist, mfile);
@@ -379,9 +423,12 @@ static void devicelist_device_load_cb(MtpcDevicelist *devicelist,
 
 	mtpc_folder_tree_set_list(MTPC_FOLDER_TREE(priv->device_folder_tree),
 				  NULL,
-				  parent_id,
-				  NULL,
 				  flist);
+
+	MTPC_STATUSBAR_UPDATE(MTPC_STATUSBAR(priv->statusbar),
+			      "Opening MTP device",
+			      device->model,
+			      "..Done.");
 
 }
 
@@ -685,13 +732,14 @@ static void _mtpc_window_set_default_size(GtkWidget *window, GdkScreen *screen)
 
 static void _mtpc_window_setup_home_folder(MtpcWindow *window, GtkWidget *widget)
 {
-	MtpcHomeFolderTree *folder_tree = MTPC_HOME_FOLDER_TREE(widget);
+	MtpcFolderTree *folder_tree = MTPC_FOLDER_TREE(widget);
 	GFileEnumerator *enumerator;
 	GError *error;
 	GFile *file, *parent;
-	GFileInfo *info;
+	GFileInfo *parent_info;
 	const char *home;
 	GList *flist = NULL;
+	MtpcFileData *parent_fdata;
 
 	/* FIXME, check getpwuid() if this fails */
 	home = g_getenv("HOME");
@@ -701,6 +749,14 @@ static void _mtpc_window_setup_home_folder(MtpcWindow *window, GtkWidget *widget
 
 	file = g_file_new_for_path(home);
 	parent = g_file_get_parent(file);
+
+	parent_info = g_file_query_info(parent,
+					"standard::*",
+					G_FILE_QUERY_INFO_NONE,
+					NULL,
+					&error);
+
+	parent_fdata = mtpc_file_data_new(parent, parent_info);
 
 	enumerator = g_file_enumerate_children(file,
 					       "standard::*",
@@ -715,6 +771,9 @@ static void _mtpc_window_setup_home_folder(MtpcWindow *window, GtkWidget *widget
 
 	do {
 		GFile *gfile;
+		GFileInfo *info, *t_info;
+		MtpcFileData *fdata;
+
 		info = g_file_enumerator_next_file(enumerator,
 						   NULL,
 						   &error);
@@ -723,15 +782,25 @@ static void _mtpc_window_setup_home_folder(MtpcWindow *window, GtkWidget *widget
 			break;
 
 		gfile = g_file_enumerator_get_child(enumerator, info);
+		/* XXX: Is this necessary?? We should be able to use
+		   the info above. Please test and FIXME.*/
+		t_info = g_file_query_info(gfile,
+					   "standard::*",
+					   G_FILE_QUERY_INFO_NONE,
+					   NULL,
+					   &error);
 
-		flist = g_list_prepend(flist, gfile);
+		fdata = mtpc_file_data_new(gfile, t_info);
+
+		flist = g_list_prepend(flist, fdata);
+		_g_object_unref(info);
 	} while (1);
 
 	flist = g_list_reverse(flist);
 
 	mtpc_window_set_title(window, home);
 
-	mtpc_home_folder_tree_set_list(folder_tree, home, parent, flist);
+	mtpc_folder_tree_set_list(folder_tree, parent_fdata, flist);
 }
 
 static GtkWidget *_mtpc_window_create_toolbar()
@@ -957,7 +1026,7 @@ static void mtpc_window_init(MtpcWindow *win)
 	gtk_scrolled_window_set_shadow_type(GTK_SCROLLED_WINDOW(priv->home_scrolled),
                                             GTK_SHADOW_IN);
 
-	priv->home_folder_tree = mtpc_home_folder_tree_new();
+	priv->home_folder_tree = mtpc_folder_tree_new();
 	gtk_container_add(GTK_CONTAINER(priv->home_scrolled),
 			  priv->home_folder_tree);
 
@@ -982,7 +1051,7 @@ static void mtpc_window_init(MtpcWindow *win)
 						     GDK_ACTION_MOVE |
 						     GDK_ACTION_COPY |
 						     GDK_ACTION_ASK);
-		mtpc_home_folder_tree_enable_drag_source(MTPC_HOME_FOLDER_TREE(priv->home_folder_tree),
+		mtpc_folder_tree_enable_drag_source(MTPC_FOLDER_TREE(priv->home_folder_tree),
 							 GDK_BUTTON1_MASK,
 							 targets,
 							 n_targets,
