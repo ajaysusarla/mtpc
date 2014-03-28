@@ -54,8 +54,6 @@ void (*open) (MtpcFolderTree *folder_tree,
 GType mtpc_folder_tree_get_type(void);
 GtkWidget *mtpc_folder_tree_new(void);
 void mtpc_folder_tree_set_list(MtpcFolderTree *folder_tree,
-			       const char *current_path,
-			       long parent_id,
 			       MtpcFileData *parent_fdata,
 			       GList *file_list);
 void mtpc_folder_tree_clear(MtpcFolderTree *folder_tree);

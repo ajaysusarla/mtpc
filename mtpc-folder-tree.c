@@ -504,8 +504,6 @@ void mtpc_folder_tree_clear(MtpcFolderTree *folder_tree)
 }
 
 void mtpc_folder_tree_set_list(MtpcFolderTree *folder_tree,
-			       const char *current_path,
-			       long parent_id,
 			       MtpcFileData *parent_fdata,
 			       GList *file_list)
 {
@@ -518,10 +516,12 @@ void mtpc_folder_tree_set_list(MtpcFolderTree *folder_tree,
 
 	gtk_tree_store_clear(priv->tree_store);
 
-	if(parent_id != -1) {
+	if (mtpc_file_data_has_parent(parent_fdata)) {
 		GtkTreeIter iter;
 		GIcon *icon;
+		long parent_id;
 
+		parent_id = mtpc_file_data_get_folder_id(parent_fdata);
 		icon = g_themed_icon_new("folder");
 
 		gtk_tree_store_append(priv->tree_store, &iter, NULL);
@@ -549,25 +549,29 @@ void mtpc_folder_tree_set_list(MtpcFolderTree *folder_tree,
 		long folder_id;
 
 		info = mtpc_file_data_get_file_info(fdata);
-		folder_id = mtpc_file_data_get_folder_id(fdata);
 
-		name = g_file_info_get_name(info);
+                if (!g_file_info_get_is_hidden(info)) {
 
-		sprintf(size, "%dKB", (int)g_file_info_get_size(info)/1024);
-		ftype = g_file_info_get_file_type(info);
+			folder_id = mtpc_file_data_get_folder_id(fdata);
 
-		icon = g_file_info_get_icon(info);
+			name = g_file_info_get_name(info);
 
-		gtk_tree_store_append(priv->tree_store, &iter, NULL);
+			sprintf(size, "%dKB", (int)g_file_info_get_size(info)/1024);
+			ftype = g_file_info_get_file_type(info);
 
-		gtk_tree_store_set(priv->tree_store, &iter,
-				   COLUMN_TYPE, ftype,
-				   COLUMN_ICON, icon,
-				   COLUMN_NAME, name,
-				   COLUMN_SIZE, size,
-				   COLUMN_FOLDER_ID, folder_id,
-				   COLUMN_FDATA, fdata,
-				   -1);
+			icon = g_file_info_get_icon(info);
+
+			gtk_tree_store_append(priv->tree_store, &iter, NULL);
+
+			gtk_tree_store_set(priv->tree_store, &iter,
+					   COLUMN_TYPE, ftype,
+					   COLUMN_ICON, icon,
+					   COLUMN_NAME, name,
+					   COLUMN_SIZE, size,
+					   COLUMN_FOLDER_ID, folder_id,
+					   COLUMN_FDATA, fdata,
+					   -1);
+		}
 
 		l = l->next;
 	}
