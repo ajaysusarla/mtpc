@@ -81,4 +81,7 @@ gboolean mtpc_file_data_is_directory(MtpcFileData *fdata);
 
 const gchar * mtpc_file_data_get_file_name(MtpcFileData *fdata);
 
+void mtpc_file_data_set_has_parent(MtpcFileData *fdata, gboolean state);
+gboolean mtpc_file_data_has_parent(MtpcFileData *fdata);
+
 #endif /* MTPC_FILE_DATA_H */

@@ -23,6 +23,8 @@
 typedef struct {
 	FileDataType ftype;
 
+	gboolean has_parent;
+
 	GFile *file;
 	GFileInfo *info;
 
@@ -74,6 +76,7 @@ static void mtpc_file_data_init(MtpcFileData *fdata)
 	priv = mtpc_file_data_get_instance_private(fdata);
 
 	priv->ftype = ENTRY_TYPE_NOT_SET;
+	priv->has_parent = TRUE; /* has a parent by default */
 }
 
 /* public */
@@ -277,3 +280,28 @@ const gchar * mtpc_file_data_get_file_name(MtpcFileData *fdata)
 		return NULL;
 	}
 }
+
+void mtpc_file_data_set_has_parent(MtpcFileData *fdata, gboolean state)
+{
+	MtpcFileDataPrivate *priv;
+
+	if (fdata == NULL)
+		return;
+
+	priv = mtpc_file_data_get_instance_private(fdata);
+
+	priv->has_parent = state;
+}
+
+gboolean mtpc_file_data_has_parent(MtpcFileData *fdata)
+{
+	MtpcFileDataPrivate *priv;
+
+	if (fdata == NULL)
+		return FALSE;
+
+	priv = mtpc_file_data_get_instance_private(fdata);
+
+	return priv->has_parent;
+}
+
