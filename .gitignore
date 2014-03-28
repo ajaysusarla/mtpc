@@ -3,3 +3,4 @@
 mtpc-marshal.h
 mtpc-marshal.c
 mtpc
+version.h

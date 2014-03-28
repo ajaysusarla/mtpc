@@ -55,6 +55,11 @@ else ifeq ($(UNAME), darwin)
 	OSSUPPORT_CFLAGS += -DDARWIN
 endif
 
+# MTPc version
+GET_VERSION = ./scripts/get-version
+VERSION_FILE = version.h
+VERSION_STRING := $(shell [ -d .git ] && $(GET_VERSION) || echo "v$(VERSION)")
+
 # Check Versions
 LIBMTP_REQ = 1.1.5
 GLIB_REQ = 2.38.0
@@ -79,7 +84,7 @@ LIBS = $(LIBMTP) $(LIBGTK) $(LIBGTHREAD)
 LDFLAGS =
 
 EXTRA_FLAGS +=	$(GTKCFLAGS) $(GLIB2CFLAGS) $(GTHREADCFLAGS) \
-		$(LIBMTPCFLAGS) -DVERSION_STRING='"$(VERSION)"' \
+		$(LIBMTPCFLAGS) \
 		-DMTPC_UI_DIR='"$(ui_dir)"' -DMTPC_ICON_DIR='"$(icon_dir)"' \
 		$(OSSUPPORT_CFLAGS)
 
@@ -119,7 +124,7 @@ DEPS = $(wildcard .dep/*.dep)
 
 all: $(PROGRAM)
 
-$(PROGRAM): $(OBJS) $(HDRS)
+$(PROGRAM): gen_version_file $(OBJS) $(HDRS)
 	$(E) '             LD' $@
 	$(Q)$(CC) $(LDFLAGS) -o $(PROGRAM) $(OBJS) $(LIBS)
 
@@ -127,6 +132,11 @@ $(PROGRAM): $(OBJS) $(HDRS)
 	$(E) '             CC' $<
 	$(Q)mkdir -p .dep
 	$(Q)$(CC) $(CFLAGS) $(EXTRA_FLAGS) -MD -MF .dep/$@.dep -c -o $@ $<
+
+gen_version_file:
+	$(E) 'Updating version file.'
+	@echo \#define VERSION_STRING \"$(VERSION_STRING)\" >$(VERSION_FILE)
+
 
 mtpc-marshal.o: mtpc-marshal.c mtpc-marshal.h
 
@@ -144,6 +154,7 @@ clean:
 	$(Q)rm -f $(OBJS) *~ $(PROGRAM) po/*~
 	$(Q)rm -rf share .dep
 	$(Q)rm -rf mtpc-marshal.h mtpc-marshal.c
+	$(Q)rm -rf version.h
 
 check:
 	$(E) 'Found libmtp version  : $(LIBMTP_VERSION), Required >= $(LIBMTP_REQ)'

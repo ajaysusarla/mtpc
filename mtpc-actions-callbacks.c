@@ -22,6 +22,7 @@
 #include "mtpc-app.h"
 #include "glib-utils.h"
 
+#include "version.h"
 
 void toggle_action_activated(GSimpleAction *action,
 			     GVariant      *parameter,
@@ -105,7 +106,7 @@ void mtpc_app_show_about(GSimpleAction *action,
 			       "translator-credits", _("translator-credits"),
 			       "license", license_text,
 			       "wrap-license", TRUE,
-			       "website", "https://github.com/ajaysusarla/mtpc",
+			       "website", "https://github.com/ajaysusarla/mtpc/wiki",
 			       (logo != NULL ? "logo" : NULL), logo,
 			       NULL);
 
