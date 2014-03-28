@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -eu
+#set -x
+
+cmd="git describe --tags --abbrev=12"
+ver=$($cmd)
+
+# strip off the 'v' prefix
+ver=${ver#v}
+printf '%s' $ver
