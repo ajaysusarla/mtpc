@@ -22,8 +22,6 @@
 #include "mtpc-app.h"
 #include "glib-utils.h"
 
-#include "version.h"
-
 void toggle_action_activated(GSimpleAction *action,
 			     GVariant      *parameter,
 			     gpointer       data)
