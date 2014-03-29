@@ -65,6 +65,9 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcWindow, mtpc_window, GTK_TYPE_APPLICATION_WINDOW)
 
 
 /* callbacks and internal methods */
+
+
+/*** device folder tree ***/
 static MtpcFileData *create_file_data_from_libmtp_file(LIBMTP_file_t *file)
 {
 	GFileInfo *info = NULL;
@@ -140,36 +143,6 @@ static MtpcFileData *create_parent_file_data_from_libmtp_file(MtpcFileData *fdat
 	mtpc_file_data_set_file_type(parent_fdata, ENTRY_TYPE_PARENT);
 
 	return parent_fdata;
-}
-
-void _mtpc_window_device_add(MtpcWindow *window, Device *device)
-{
-	MtpcWindowPrivate *priv;
-
-	g_return_if_fail(device != NULL);
-
-	priv = mtpc_window_get_instance_private(window);
-
-	priv->dlist = g_list_prepend(priv->dlist, device);
-}
-
-void _mtpc_window_devicelist_free(MtpcWindow *window)
-{
-	MtpcWindowPrivate *priv;
-	priv = mtpc_window_get_instance_private(window);
-
-	g_list_foreach(priv->dlist, (GFunc)mtpc_device_destroy, NULL);
-	g_list_free(priv->dlist);
-	priv->dlist = NULL;
-}
-
-static gboolean update_statusbar(gpointer data)
-{
-	MtpcStatusbar *statusbar = MTPC_STATUSBAR(data);
-
-	MTPC_STATUSBAR_UPDATE(statusbar, "", "Fetching device information", "");
-
-	return TRUE;
 }
 
 static void device_folder_tree_open_cb(MtpcFolderTree *folder_tree,
@@ -275,6 +248,79 @@ static void device_folder_tree_open_cb(MtpcFolderTree *folder_tree,
 			      "..Done.");
 }
 
+/*** home folder tree ***/
+static void _mtpc_window_setup_home_folder(MtpcWindow *window, GtkWidget *widget)
+{
+	MtpcFolderTree *folder_tree = MTPC_FOLDER_TREE(widget);
+	GFileEnumerator *enumerator;
+	GError *error;
+	GFile *file, *parent;
+	GFileInfo *parent_info;
+	const char *home;
+	GList *flist = NULL;
+	MtpcFileData *parent_fdata;
+
+	/* FIXME, check getpwuid() if this fails */
+	home = g_getenv("HOME");
+	if (home == NULL) {
+		return;
+	}
+
+	file = g_file_new_for_path(home);
+	parent = g_file_get_parent(file);
+
+	parent_info = g_file_query_info(parent,
+					"standard::*",
+					G_FILE_QUERY_INFO_NONE,
+					NULL,
+					&error);
+
+	parent_fdata = mtpc_file_data_new(parent, parent_info);
+
+	enumerator = g_file_enumerate_children(file,
+					       "standard::*",
+					       G_FILE_QUERY_INFO_NONE,
+					       NULL,
+					       &error);
+
+	if (enumerator == NULL) {
+		_g_object_unref(file);
+		return;
+	}
+
+	do {
+		GFile *gfile;
+		GFileInfo *info, *t_info;
+		MtpcFileData *fdata;
+
+		info = g_file_enumerator_next_file(enumerator,
+						   NULL,
+						   &error);
+
+		if (info == NULL)
+			break;
+
+		gfile = g_file_enumerator_get_child(enumerator, info);
+		/* XXX: Is this necessary?? We should be able to use
+		   the info above. Please test and FIXME.*/
+		t_info = g_file_query_info(gfile,
+					   "standard::*",
+					   G_FILE_QUERY_INFO_NONE,
+					   NULL,
+					   &error);
+
+		fdata = mtpc_file_data_new(gfile, t_info);
+
+		flist = g_list_prepend(flist, fdata);
+		_g_object_unref(info);
+	} while (1);
+
+	flist = g_list_reverse(flist);
+
+	mtpc_window_set_title(window, home);
+
+	mtpc_folder_tree_set_list(folder_tree, parent_fdata, flist);
+}
 
 static void home_folder_tree_popup_cb(MtpcFolderTree *folder_tree,
 				      GFile *gfile,
@@ -371,6 +417,38 @@ static void home_folder_tree_load_cb(MtpcFolderTree *folder_tree,
 	printf("home_folder_tree_load_cb\n");
 }
 
+
+/*** device list ***/
+void _mtpc_window_device_add(MtpcWindow *window, Device *device)
+{
+	MtpcWindowPrivate *priv;
+
+	g_return_if_fail(device != NULL);
+
+	priv = mtpc_window_get_instance_private(window);
+
+	priv->dlist = g_list_prepend(priv->dlist, device);
+}
+
+void _mtpc_window_devicelist_free(MtpcWindow *window)
+{
+	MtpcWindowPrivate *priv;
+	priv = mtpc_window_get_instance_private(window);
+
+	g_list_foreach(priv->dlist, (GFunc)mtpc_device_destroy, NULL);
+	g_list_free(priv->dlist);
+	priv->dlist = NULL;
+}
+
+static gboolean update_statusbar(gpointer data)
+{
+	MtpcStatusbar *statusbar = MTPC_STATUSBAR(data);
+
+	MTPC_STATUSBAR_UPDATE(statusbar, "", "Fetching device information", "");
+
+	return TRUE;
+}
+
 static void devicelist_device_popup_cb(MtpcDevicelist *devicelist,
 				       Device *device,
 				       gpointer user_data)
@@ -399,7 +477,6 @@ static void devicelist_device_load_cb(MtpcDevicelist *devicelist,
 
 	priv = mtpc_window_get_instance_private(window);
 
-	printf("devicelist_device_load_cb\n");
 	MTPC_STATUSBAR_UPDATE(MTPC_STATUSBAR(priv->statusbar),
 			      "Opening MTP device",
 			      device->model,
@@ -616,6 +693,7 @@ static void paste_cb(GSimpleAction *action,
 {
 }
 
+/* widget states */
 static void change_toolbar_view_state(GSimpleAction *action,
 				      GVariant      *state,
 				      gpointer       user_data)
@@ -730,79 +808,6 @@ static void _mtpc_window_set_default_size(GtkWidget *window, GdkScreen *screen)
         gtk_window_set_default_size(GTK_WINDOW(window), max_width, max_height);
 }
 
-static void _mtpc_window_setup_home_folder(MtpcWindow *window, GtkWidget *widget)
-{
-	MtpcFolderTree *folder_tree = MTPC_FOLDER_TREE(widget);
-	GFileEnumerator *enumerator;
-	GError *error;
-	GFile *file, *parent;
-	GFileInfo *parent_info;
-	const char *home;
-	GList *flist = NULL;
-	MtpcFileData *parent_fdata;
-
-	/* FIXME, check getpwuid() if this fails */
-	home = g_getenv("HOME");
-	if (home == NULL) {
-		return;
-	}
-
-	file = g_file_new_for_path(home);
-	parent = g_file_get_parent(file);
-
-	parent_info = g_file_query_info(parent,
-					"standard::*",
-					G_FILE_QUERY_INFO_NONE,
-					NULL,
-					&error);
-
-	parent_fdata = mtpc_file_data_new(parent, parent_info);
-
-	enumerator = g_file_enumerate_children(file,
-					       "standard::*",
-					       G_FILE_QUERY_INFO_NONE,
-					       NULL,
-					       &error);
-
-	if (enumerator == NULL) {
-		_g_object_unref(file);
-		return;
-	}
-
-	do {
-		GFile *gfile;
-		GFileInfo *info, *t_info;
-		MtpcFileData *fdata;
-
-		info = g_file_enumerator_next_file(enumerator,
-						   NULL,
-						   &error);
-
-		if (info == NULL)
-			break;
-
-		gfile = g_file_enumerator_get_child(enumerator, info);
-		/* XXX: Is this necessary?? We should be able to use
-		   the info above. Please test and FIXME.*/
-		t_info = g_file_query_info(gfile,
-					   "standard::*",
-					   G_FILE_QUERY_INFO_NONE,
-					   NULL,
-					   &error);
-
-		fdata = mtpc_file_data_new(gfile, t_info);
-
-		flist = g_list_prepend(flist, fdata);
-		_g_object_unref(info);
-	} while (1);
-
-	flist = g_list_reverse(flist);
-
-	mtpc_window_set_title(window, home);
-
-	mtpc_folder_tree_set_list(folder_tree, parent_fdata, flist);
-}
-
 static GtkWidget *_mtpc_window_create_toolbar()
 {
 	GtkWidget *toolbar;
@@ -852,10 +857,6 @@ static GActionEntry win_entries[] = {
 static void mtpc_window_dispose(GObject *object)
 {
 	MtpcWindow *window = MTPC_WINDOW(object);
-	MtpcWindowPrivate *priv;
-
-	priv = mtpc_window_get_instance_private(window);
-
 
 	G_OBJECT_CLASS(mtpc_window_parent_class)->dispose(object);
 }
@@ -1098,14 +1099,10 @@ static void mtpc_window_init(MtpcWindow *win)
 GtkWidget *mtpc_window_new(MtpcApp *application)
 {
 	MtpcWindow *window;
-	MtpcWindowPrivate *priv;
 
 	window = g_object_new(MTPC_TYPE_WINDOW,
 			      "application", application,
 			      NULL);
-
-	priv = mtpc_window_get_instance_private(window);
-
 
 	return GTK_WIDGET(window);
 }
