@@ -28,4 +28,8 @@ GtkBuilder *_gtk_builder_new_from_file(const char *ui_file);
 void _gtk_widget_hide(GtkWidget *widget);
 void _gtk_widget_show(GtkWidget *widget);
 
+GdkDragAction
+_gtk_menu_ask_drag_drop_action(GtkWidget     *widget,
+			       GdkDragAction  actions,
+			       guint32        activate_time);
 #endif /* GTK_UTILS_H */
