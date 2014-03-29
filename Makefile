@@ -84,7 +84,7 @@ LIBS = $(LIBMTP) $(LIBGTK) $(LIBGTHREAD)
 LDFLAGS =
 
 EXTRA_FLAGS +=	$(GTKCFLAGS) $(GLIB2CFLAGS) $(GTHREADCFLAGS) \
-		$(LIBMTPCFLAGS) \
+		$(LIBMTPCFLAGS) -DVERSION_STRING='"$(VERSION_STRING)"' \
 		-DMTPC_UI_DIR='"$(ui_dir)"' -DMTPC_ICON_DIR='"$(icon_dir)"' \
 		$(OSSUPPORT_CFLAGS)
 
@@ -124,7 +124,7 @@ DEPS = $(wildcard .dep/*.dep)
 
 all: $(PROGRAM)
 
-$(PROGRAM): gen_version_file $(OBJS) $(HDRS)
+$(PROGRAM): $(OBJS) $(HDRS)
 	$(E) '             LD' $@
 	$(Q)$(CC) $(LDFLAGS) -o $(PROGRAM) $(OBJS) $(LIBS)
 
