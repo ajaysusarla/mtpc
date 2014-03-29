@@ -171,7 +171,7 @@ static gboolean button_press_event_cb(GtkWidget *widget,
 		if (!(event->state & GDK_CONTROL_MASK)
 		    && !(event->state & GDK_SHIFT_MASK)
 		    && priv->drag_source_enabled) {
-			printf("...dragging..\n");
+			printf("button_press_event_cb:...dragging..\n");
 			priv->dragging = TRUE;
 			priv->drag_start_x = event->x;
 			priv->drag_start_y = event->y;
@@ -292,7 +292,7 @@ static gboolean motion_notify_event_cb(GtkWidget      *widget,
 			cairo_surface_destroy(dnd_surface);
 			gtk_tree_path_free(path);
 
-			printf("...DRAGGING...\n");
+			printf("motion_notify_event_cb:...DRAGGING...\n");
 		}
 
 		return TRUE;
@@ -605,4 +605,28 @@ void mtpc_folder_tree_unset_drag_source(MtpcFolderTree *folder_tree)
 	priv = mtpc_folder_tree_get_instance_private(folder_tree);
 
 	priv->drag_source_enabled = FALSE;
+}
+
+MtpcFileData *mtpc_folder_tree_get_file(MtpcFolderTree *folder_tree,
+					GtkTreePath   *path)
+{
+        GtkTreeModel *tree_model;
+	MtpcFolderTreePrivate *priv;
+        GtkTreeIter   iter;
+        MtpcFileData  *file_data;
+
+	priv = mtpc_folder_tree_get_instance_private(folder_tree);
+
+        tree_model = GTK_TREE_MODEL(priv->tree_store);
+
+        if (!gtk_tree_model_get_iter(tree_model, &iter, path))
+		return NULL;
+
+        file_data = NULL;
+        gtk_tree_model_get(tree_model,
+			   &iter,
+			   COLUMN_FDATA, &file_data,
+			   -1);
+
+        return file_data;
 }

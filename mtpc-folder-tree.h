@@ -63,6 +63,8 @@ void mtpc_folder_tree_enable_drag_source(MtpcFolderTree *folder_tree,
 					 int n_targets,
 					 GdkDragAction actions);
 void mtpc_folder_tree_unset_drag_source(MtpcFolderTree *folder_tree);
+MtpcFileData *mtpc_folder_tree_get_file(MtpcFolderTree *folder_tree,
+					GtkTreePath   *path);
 
 #endif /* MTPC_FOLDER_TREE_H */
 
