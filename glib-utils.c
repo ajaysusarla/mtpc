@@ -57,3 +57,24 @@ void _g_string_list_free(GList *string_list)
 	g_list_foreach(string_list, (GFunc)g_free, NULL);
 	g_list_free(string_list);
 }
+
+void _g_object_list_unref(GList *list)
+{
+        g_list_foreach (list, (GFunc)_g_object_unref, NULL);
+        g_list_free(list);
+}
+
+
+GList * _g_file_list_new_from_uriv(char **uris)
+{
+        GList *r = NULL;
+        int    i;
+
+        if (uris == NULL)
+                return NULL;
+
+        for (i = 0; uris[i] != NULL; i++)
+                r = g_list_prepend(r, g_file_new_for_uri(uris[i]));
+
+        return g_list_reverse(r);
+}

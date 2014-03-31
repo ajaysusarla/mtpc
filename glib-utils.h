@@ -32,5 +32,7 @@ void _g_object_unref(gpointer object);
 void _g_free(gpointer mem);
 
 void _g_string_list_free(GList *string_list);
+void _g_object_list_unref(GList *list);
+GList * _g_file_list_new_from_uriv(char **uris);
 
 #endif /* GLIB_UTILS_H */
