@@ -630,3 +630,75 @@ MtpcFileData *mtpc_folder_tree_get_file(MtpcFolderTree *folder_tree,
 
         return file_data;
 }
+
+MtpcFileData *mtpc_folder_tree_get_selected_item(MtpcFolderTree *folder_tree)
+{
+        GtkTreeSelection *selection;
+        GtkTreeModel     *tree_model;
+        GtkTreeIter       iter;
+        MtpcFileData      *file_data;
+	MtpcFolderTreePrivate *priv;
+
+	priv = mtpc_folder_tree_get_instance_private(folder_tree);
+
+        selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(folder_tree));
+        if (selection == NULL)
+                return NULL;
+
+        tree_model = GTK_TREE_MODEL(priv->tree_store);
+        if (!gtk_tree_selection_get_selected(selection, &tree_model, &iter))
+                return NULL;
+
+        gtk_tree_model_get(tree_model,
+			   &iter,
+			   COLUMN_FDATA, &file_data,
+			   -1);
+
+        return file_data;
+}
+
+GList *mtpc_folder_tree_get_selected_items(MtpcFolderTree *folder_tree)
+{
+        GtkTreeSelection *selection;
+        GtkTreeModel     *tree_model;
+        GtkTreeIter       iter;
+	MtpcFolderTreePrivate *priv;
+	GList *paths, *file_list, *t;
+
+	priv = mtpc_folder_tree_get_instance_private(folder_tree);
+
+        selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(folder_tree));
+        if (selection == NULL)
+                return NULL;
+
+        tree_model = GTK_TREE_MODEL(priv->tree_store);
+
+	paths = gtk_tree_selection_get_selected_rows(selection,
+						     &tree_model);
+
+	if (paths == NULL)
+		return NULL;
+
+
+	t = paths;
+	file_list = NULL;
+
+	while (t != NULL) {
+		MtpcFileData *fdata;
+		GtkTreePath *path = (GtkTreePath *)t->data;
+
+		if (gtk_tree_model_get_iter(tree_model, &iter, path)) {
+
+			gtk_tree_model_get(tree_model,
+					   &iter,
+					   COLUMN_FDATA, &fdata,
+					   -1);
+
+			file_list = g_list_prepend(file_list, fdata);
+		}
+
+		t = t->next;
+	}
+
+	return file_list;
+}

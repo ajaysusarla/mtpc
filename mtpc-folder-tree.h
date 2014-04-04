@@ -65,6 +65,8 @@ void mtpc_folder_tree_enable_drag_source(MtpcFolderTree *folder_tree,
 void mtpc_folder_tree_unset_drag_source(MtpcFolderTree *folder_tree);
 MtpcFileData *mtpc_folder_tree_get_file(MtpcFolderTree *folder_tree,
 					GtkTreePath   *path);
+MtpcFileData *mtpc_folder_tree_get_selected_item(MtpcFolderTree *folder_tree);
+GList *mtpc_folder_tree_get_selected_items(MtpcFolderTree *folder_tree);
 
 #endif /* MTPC_FOLDER_TREE_H */
 
