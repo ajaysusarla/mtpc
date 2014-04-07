@@ -78,26 +78,19 @@ static gboolean popup_menu_cb(GtkWidget *widget, gpointer user_data)
 	GtkTreeStore *tree_store;
 	GtkTreeIter iter;
 	MtpcFileData *fdata;
+	GList *file_list;
 
 	priv = mtpc_folder_tree_get_instance_private(folder_tree);
 	tree_store = priv->tree_store;
 
-	if (gtk_tree_selection_get_selected(gtk_tree_view_get_selection(GTK_TREE_VIEW(folder_tree)), NULL, &iter)) {
-
-			gtk_tree_model_get(GTK_TREE_MODEL(tree_store),
-					   &iter,
-					   COLUMN_FDATA, &fdata,
-					   -1);
-
-			if (!fdata)
-				return FALSE;
-	}
+	file_list = mtpc_folder_tree_get_selected_items(folder_tree);
+	if (file_list == NULL)
+		return FALSE;
 
 	g_signal_emit(folder_tree,
 		      mtpc_folder_tree_signals[FOLDER_POPUP],
 		      0,
-		      fdata);
-
+		      file_list);
 
 	return TRUE;
 }
