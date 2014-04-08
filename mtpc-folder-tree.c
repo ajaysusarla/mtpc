@@ -19,7 +19,6 @@
 #include "mtpc-folder-tree.h"
 #include "glib-utils.h"
 
-
 enum {
         FOLDER_POPUP,
         LOAD,
@@ -48,9 +47,11 @@ typedef struct {
 	GdkModifierType drag_start_button_mask;
 	GtkTargetList *drag_target_list;
 	GdkDragAction drag_actions;
+	GtkTreePath *double_click_path[2]; /* To monitor double clicks */
 
 	gboolean dragging:1; /* if dragging items */
 	gboolean drag_started:1; /* drag started */
+	gboolean drag_selection:1; /* should row be selected or not*/
 	int drag_start_x;
 	int drag_start_y;
 } MtpcFolderTreePrivate;
@@ -62,13 +63,18 @@ G_DEFINE_TYPE_WITH_PRIVATE(MtpcFolderTree,
 			   mtpc_folder_tree,
 			   GTK_TYPE_TREE_VIEW);
 
-
-
 /* internal methods and callbacks */
 static gboolean selection_changed_cb(GtkTreeSelection *selection,
 				     gpointer user_data)
 {
 	return FALSE;
+}
+
+static void open_folder(MtpcFolderTree *folder_tree, MtpcFileData *fdata)
+{
+	g_signal_emit(folder_tree,
+		      mtpc_folder_tree_signals[OPEN],
+		      0, fdata);
 }
 
 static gboolean popup_menu_cb(GtkWidget *widget, gpointer user_data)
@@ -93,112 +99,6 @@ static gboolean popup_menu_cb(GtkWidget *widget, gpointer user_data)
 		      file_list);
 
 	return TRUE;
-}
-
-static gboolean button_press_event_cb(GtkWidget *widget,
-				      GdkEventButton *event,
-				      gpointer user_data)
-{
-	MtpcFolderTree *folder_tree = MTPC_FOLDER_TREE(user_data);
-	MtpcFolderTreePrivate *priv;
-	GtkTreePath *path;
-	GtkTreeIter iter;
-	gboolean retval = FALSE;
-	GtkTreeViewColumn *column;
-	int cell_x, cell_y;
-
-	priv = mtpc_folder_tree_get_instance_private(folder_tree);
-
-	gtk_widget_grab_focus(widget);
-
-	if ((event->state & GDK_SHIFT_MASK) || (event->state & GDK_CONTROL_MASK))
-		return retval;
-
-	if ((event->button != 1) && (event->button != 3))
-		return retval;
-
-	if (!gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(folder_tree),
-					   event->x, event->y,
-					   &path,
-					   &column,
-					   &cell_x,
-					   &cell_y))
-	{
-		if (event->button == 3) {
-			g_signal_emit(folder_tree,
-				      mtpc_folder_tree_signals[FOLDER_POPUP],
-				      0,
-				      NULL);
-			retval = TRUE;
-		}
-
-		return retval;
-	}
-
-	if (!gtk_tree_model_get_iter(GTK_TREE_MODEL(priv->tree_store),
-				    &iter,
-				    path))
-	{
-		gtk_tree_path_free(path);
-		return retval;
-	}
-
-	if (event->button == 3) {
-		MtpcFileData *fdata;
-
-		gtk_tree_model_get(GTK_TREE_MODEL(priv->tree_store),
-				   &iter,
-				   COLUMN_FDATA, &fdata,
-				   -1);
-
-		if (fdata) {
-			g_signal_emit(folder_tree,
-				      mtpc_folder_tree_signals[FOLDER_POPUP],
-				      0,
-				      fdata);
-
-			retval = TRUE;
-		}
-	} else if ((event->button == 1) && (event->type == GDK_BUTTON_PRESS)) {
-		/* possible start of dragging */
-		if (!(event->state & GDK_CONTROL_MASK)
-		    && !(event->state & GDK_SHIFT_MASK)
-		    && priv->drag_source_enabled) {
-			printf("button_press_event_cb:...dragging..\n");
-			priv->dragging = TRUE;
-			priv->drag_start_x = event->x;
-			priv->drag_start_y = event->y;
-		}
-	} else if ((event->button == 1) && (event->type == GDK_2BUTTON_PRESS)) {
-	}
-
-	gtk_tree_path_free(path);
-
-	return retval;
-}
-
-static gboolean button_release_event_cb(GtkWidget *widget,
-					GdkEventButton *event,
-					gpointer user_data)
-{
-	MtpcFolderTree *folder_tree = MTPC_FOLDER_TREE(user_data);
-	MtpcFolderTreePrivate *priv;
-
-	priv = mtpc_folder_tree_get_instance_private(folder_tree);
-
-	if (priv->dragging) {
-		priv->dragging = FALSE;
-		priv->drag_started = FALSE;
-	}
-
-	return FALSE;
-}
-
-static void open_folder(MtpcFolderTree *folder_tree, MtpcFileData *fdata)
-{
-	g_signal_emit(folder_tree,
-		      mtpc_folder_tree_signals[OPEN],
-		      0, fdata);
 }
 
 static gboolean row_activated_cb(GtkTreeView *tree_view,
@@ -231,6 +131,289 @@ static gboolean row_activated_cb(GtkTreeView *tree_view,
 	return TRUE;
 }
 
+static gboolean folder_tree_selection_func(GtkTreeSelection *selection,
+					   GtkTreeModel *model,
+					   GtkTreePath *path,
+					   gboolean path_currently_selected,
+					   gpointer data)
+{
+	MtpcFolderTreePrivate *priv;
+
+	priv = mtpc_folder_tree_get_instance_private(MTPC_FOLDER_TREE(data));
+
+	return priv->drag_selection;
+}
+
+static GIcon * get_drag_surface(MtpcFolderTree *folder_tree)
+{
+	MtpcFolderTreePrivate *priv;
+	GtkTreeModel *model;
+	GtkTreePath *path;
+	GtkTreeIter iter;
+	GIcon *icon;
+
+	icon = NULL;
+
+	priv = mtpc_folder_tree_get_instance_private(folder_tree);
+
+	if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(folder_tree),
+					  priv->drag_start_x,
+					  priv->drag_start_y,
+					  &path, NULL, NULL, NULL)) {
+		model = gtk_tree_view_get_model(GTK_TREE_VIEW(folder_tree));
+		gtk_tree_model_get_iter(model, &iter, path);
+		gtk_tree_model_get(model,
+				   &iter,
+				   COLUMN_ICON,
+				   &icon,
+				   -1);
+
+		gtk_tree_path_free(path);
+	}
+
+	return icon;
+}
+
+static void drag_begin_cb(GtkWidget *widget,
+			  GdkDragContext *context,
+			  gpointer user_data)
+{
+	/*
+	MtpcFolderTree *folder_tree = MTPC_FOLDER_TREE(user_data);
+	MtpcFolderTreePrivate *priv;
+	GList *selection_cache;
+	GIcon *icon;
+
+	priv = mtpc_folder_tree_get_instance_private(folder_tree);
+
+	icon = get_drag_surface(folder_tree);
+	if (icon) {
+		gtk_drag_set_icon_gicon(context, icon, 0, 5);
+	} else {
+		gtk_drag_set_icon_default(context);
+	}
+
+	priv->drag_started = TRUE;
+	*/
+	GIcon *icon;
+
+	icon = g_themed_icon_new("folder");
+
+	gtk_drag_source_set_icon_gicon(widget, icon);
+}
+
+static gboolean button_event_modifies_selection(GdkEventButton *event)
+{
+        return (event->state & (GDK_CONTROL_MASK | GDK_SHIFT_MASK)) != 0;
+}
+
+static gboolean button_press_event_cb(GtkWidget *widget,
+				      GdkEventButton *event,
+				      gpointer user_data)
+{
+	MtpcFolderTree *folder_tree = MTPC_FOLDER_TREE(user_data);
+	GtkTreeView *tree_view;
+	MtpcFolderTreePrivate *priv;
+	GtkTreePath *path;
+	GtkTreeSelection *selection;
+	GtkWidgetClass *tree_view_class;
+	GtkTreeIter iter;
+	gboolean retval = FALSE;
+	gboolean call_parent, path_selected, is_simple_click;
+	GtkTreeViewColumn *column;
+	int cell_x, cell_y;
+
+	priv = mtpc_folder_tree_get_instance_private(folder_tree);
+
+	tree_view = GTK_TREE_VIEW(folder_tree);
+	tree_view_class = GTK_WIDGET_GET_CLASS(tree_view);
+	selection = gtk_tree_view_get_selection(tree_view);
+
+	gtk_widget_grab_focus(widget);
+
+	/* We don't handle extra mouse buttons */
+	if (event->button > 5) {
+		return FALSE;
+	}
+
+	if (event->window != gtk_tree_view_get_bin_window(tree_view)) {
+		return FALSE;
+	}
+
+	is_simple_click = ((event->button == 1 || event->button == 2) &&
+			   (event->type == GDK_BUTTON_PRESS));
+
+	priv->drag_selection = TRUE;
+	priv->drag_start_x = -1;
+	priv->drag_start_y = -1;
+
+	if (!gtk_tree_view_get_path_at_pos(tree_view, event->x, event->y,
+					   &path, NULL, NULL, NULL)) {
+		if (is_simple_click) {
+			g_clear_pointer(&priv->double_click_path[1],
+					gtk_tree_path_free);
+			priv->double_click_path[1] = priv->double_click_path[0];
+			priv->double_click_path[0] = NULL;
+		}
+
+		/* deselect if clicked outside any row. */
+		gtk_tree_selection_unselect_all(selection);
+		tree_view_class->button_press_event(widget, event);
+
+		if (event->button == 3) {
+			g_signal_emit(folder_tree,
+				      mtpc_folder_tree_signals[FOLDER_POPUP],
+				      0,
+				      NULL);
+			retval = TRUE;
+		}
+
+		return retval;
+	}
+
+	call_parent = TRUE;
+	path_selected = gtk_tree_selection_path_is_selected(selection, path);
+
+	/* make sure double clicks only happen on the same item */
+	if (is_simple_click) {
+		g_clear_pointer(&priv->double_click_path[1],
+				gtk_tree_path_free);
+		priv->double_click_path[1] = priv->double_click_path[0];
+		priv->double_click_path[0] = gtk_tree_path_copy(path);
+	}
+
+	if (event->type == GDK_2BUTTON_PRESS) {
+		/* double clicking doesn't mean d-n-d */
+		priv->dragging = TRUE;
+
+		if (priv->double_click_path[1] &&
+		    gtk_tree_path_compare(priv->double_click_path[0],
+					  priv->double_click_path[1]) == 0) {
+			if ((event->button == 1) &&
+			    button_event_modifies_selection(event)) {
+				printf("Modifies selection\n");
+			} else {
+				printf("Does not modify selection\n");
+			}
+		} else {
+			tree_view_class->button_press_event(widget, event);
+		}
+	} else {
+		if (event->button == 3 && path_selected)
+			call_parent = FALSE;
+
+		if ((event->button == 1 || event->button == 2) &&
+		    ((event->state & GDK_CONTROL_MASK) !=0 ||
+		     (event->state & GDK_SHIFT_MASK) == 0)) {
+			if (path_selected) {
+				printf("Path Selected\n");
+			} else if ((event->state & GDK_CONTROL_MASK) != 0) {
+				GList *selected_rows, *l;
+
+				call_parent = FALSE;
+
+				if ((event->state & GDK_SHIFT_MASK) != 0) {
+					GtkTreePath *cursor;
+					gtk_tree_view_get_cursor(tree_view,
+								 &cursor,
+								 NULL);
+					if (cursor != NULL) {
+						gtk_tree_selection_select_range(selection, cursor, path);
+					} else {
+						gtk_tree_selection_select_path(selection, path);
+					}
+				} else {
+					gtk_tree_selection_select_path(selection,
+								       path);
+				}
+				selected_rows = gtk_tree_selection_get_selected_rows(selection, NULL);
+				printf("---->selcted items:%d\n", g_list_length(selected_rows));
+
+				/* this unselects everything... */
+				gtk_tree_view_set_cursor(tree_view, path, NULL, FALSE);
+				printf("---->unselecting everything\n");
+
+				/* so select it again */
+				for (l = selected_rows; l != NULL; l = l->next)
+					gtk_tree_selection_select_path(selection,
+						l->data);
+
+				printf("---->selecting everything back\n");
+				g_list_free_full(selected_rows,
+						 (GDestroyNotify)gtk_tree_path_free);
+				printf("---->done freeing\n");
+			} else {
+				printf("ignore button release");
+			}
+		}
+
+		if (call_parent) {
+			g_signal_handlers_block_by_func(tree_view,
+							row_activated_cb,
+							folder_tree);
+			tree_view_class->button_press_event(widget, event);
+			g_signal_handlers_unblock_by_func(tree_view,
+							  row_activated_cb,
+							  folder_tree);
+		} else if (path_selected) {
+			gtk_widget_grab_focus(widget);
+		}
+
+		if (is_simple_click) {
+			printf("button_press_event_cb:...dragging..\n");
+			priv->dragging = TRUE;
+			priv->drag_start_x = event->x;
+			priv->drag_start_y = event->y;
+			priv->drag_selection = FALSE;
+		}
+
+		if (event->button == 3) {
+			printf("*** popup menu should come here\n");
+		}
+	}
+
+	gtk_tree_path_free(path);
+
+	/* we have chained the default handler, so don't let it run now. */
+	return TRUE;
+}
+
+static gboolean button_release_event_cb(GtkWidget *widget,
+					GdkEventButton *event,
+					gpointer user_data)
+{
+	MtpcFolderTree *folder_tree = MTPC_FOLDER_TREE(user_data);
+	MtpcFolderTreePrivate *priv;
+
+	priv = mtpc_folder_tree_get_instance_private(folder_tree);
+
+	if (priv->dragging) {
+		if(priv->drag_start_x != -1) {
+			priv->drag_selection = TRUE;
+			if(priv->drag_start_x == event->x &&
+			   priv->drag_start_y == event->y) {
+				GtkTreePath *path = NULL;
+				GtkTreeViewColumn *col;
+				if(gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(widget),
+								 event->x, event->y,
+								 &path,
+								 &col,
+								 NULL, NULL)) {
+					gtk_tree_view_set_cursor(GTK_TREE_VIEW(widget), path, col, FALSE);
+				}
+				if(path)
+					gtk_tree_path_free(path);
+			}
+		}
+		priv->drag_start_x = -1;
+		priv->drag_start_y = -1;
+		priv->dragging = FALSE;
+		priv->drag_started = FALSE;
+	}
+
+	return FALSE;
+}
+
 static gboolean motion_notify_event_cb(GtkWidget      *widget,
 				       GdkEventButton *event,
 				       gpointer        user_data)
@@ -255,7 +438,6 @@ static gboolean motion_notify_event_cb(GtkWidget      *widget,
 			GdkDragContext *context;
 			int cell_x;
 			int cell_y;
-			cairo_surface_t *dnd_surface;
 
 			if (!gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(folder_tree),
 							   event->x,
@@ -280,9 +462,6 @@ static gboolean motion_notify_event_cb(GtkWidget      *widget,
 								  -1,
 								  -1);
 
-			dnd_surface = gtk_tree_view_create_row_drag_icon(GTK_TREE_VIEW(folder_tree), path);
-			gtk_drag_set_icon_surface(context, dnd_surface);
-			cairo_surface_destroy(dnd_surface);
 			gtk_tree_path_free(path);
 
 			printf("motion_notify_event_cb:...DRAGGING...\n");
@@ -448,6 +627,10 @@ static void mtpc_folder_tree_init(MtpcFolderTree *folder_tree)
 
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(folder_tree));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
+	gtk_tree_selection_set_select_function(selection,
+					       folder_tree_selection_func,
+					       folder_tree,
+					       NULL);
 
 	/* signal handlers */
 	g_signal_connect(selection, "changed",
@@ -464,6 +647,10 @@ static void mtpc_folder_tree_init(MtpcFolderTree *folder_tree)
 	g_signal_connect(folder_tree,
 			 "button-release-event",
 			 G_CALLBACK(button_release_event_cb),
+			 folder_tree);
+	g_signal_connect(folder_tree,
+			 "drag-begin",
+			 G_CALLBACK(drag_begin_cb),
 			 folder_tree);
 	g_signal_connect(folder_tree,
 			 "row-activated",
