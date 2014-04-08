@@ -57,12 +57,12 @@ void mtpc_folder_tree_set_list(MtpcFolderTree *folder_tree,
 			       MtpcFileData *parent_fdata,
 			       GList *file_list);
 void mtpc_folder_tree_clear(MtpcFolderTree *folder_tree);
-void mtpc_folder_tree_enable_drag_source(MtpcFolderTree *folder_tree,
-					 GdkModifierType start_button_mask,
-					 const GtkTargetEntry *targets,
-					 int n_targets,
-					 GdkDragAction actions);
-void mtpc_folder_tree_unset_drag_source(MtpcFolderTree *folder_tree);
+void mtpc_folder_tree_enable_drag(MtpcFolderTree *folder_tree,
+				  GdkModifierType start_button_mask,
+				  const GtkTargetEntry *targets,
+				  int n_targets,
+				  GdkDragAction actions);
+void mtpc_folder_tree_disable_drag(MtpcFolderTree *folder_tree);
 MtpcFileData *mtpc_folder_tree_get_file(MtpcFolderTree *folder_tree,
 					GtkTreePath   *path);
 MtpcFileData *mtpc_folder_tree_get_selected_item(MtpcFolderTree *folder_tree);
