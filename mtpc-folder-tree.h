@@ -34,19 +34,19 @@ typedef struct _MtpcFolderTree MtpcFolderTree;
 typedef struct _MtpcFolderTreeClass MtpcFolderTreeClass;
 
 struct _MtpcFolderTree {
-GtkTreeView parent;
+	GtkTreeView parent;
 };
 
 struct _MtpcFolderTreeClass {
-GtkTreeViewClass parent_class;
+	GtkTreeViewClass parent_class;
 
-void (*folder_popup) (MtpcFolderTree *folder_tree,
+	void (*folder_popup) (MtpcFolderTree *folder_tree,
                               GFileInfo *info);
 
-void (*load) (MtpcFolderTree *folder_tree,
+	void (*load) (MtpcFolderTree *folder_tree,
 		      GFileInfo *info);
 
-void (*open) (MtpcFolderTree *folder_tree,
+	void (*open) (MtpcFolderTree *folder_tree,
 		      GFileInfo *info);
 };
 
